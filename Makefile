@@ -5,12 +5,20 @@ MAIN_FILE := cmd/$(APP_NAME)/main.go
 
 EXECUTABLE := $(BUILD_DIR)/$(APP_NAME)
 
+GOLANGCI_LINT_VERSION := v1.62.2
 
-.PHONY: all ci run build clean fmt test lint check-fmt
+
+.PHONY: all ci run build clean fmt test lint check-fmt install-lint
 
 
 all: lint test build
-ci: check-fmt test
+ci: check-fmt lint test
+
+
+install-lint:
+	@echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- $(GOLANGCI_LINT_VERSION)
+	@echo "golangci-lint $(GOLANGCI_LINT_VERSION) installed."
 
 
 run:
