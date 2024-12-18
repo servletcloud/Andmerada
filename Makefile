@@ -6,10 +6,11 @@ MAIN_FILE := cmd/$(APP_NAME)/main.go
 EXECUTABLE := $(BUILD_DIR)/$(APP_NAME)
 
 
-.PHONY: init all run build clean fmt test lint
+.PHONY: all ci run build clean fmt test lint check-fmt
 
 
 all: lint test build
+ci: check-fmt lint test
 
 
 run:
@@ -27,6 +28,17 @@ build: clean
 fmt:
 	@echo "Formatting code..."
 	go fmt ./...
+
+
+check-fmt:
+	@unformatted=$$(gofmt -l .); \
+	if [ -n "$$unformatted" ]; then \
+		echo "The following files are not properly formatted:"; \
+		echo "$$unformatted"; \
+		exit 1; \
+	else \
+		echo "All files are properly formatted!"; \
+	fi
 
 
 lint:
