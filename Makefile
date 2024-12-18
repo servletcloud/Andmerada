@@ -5,6 +5,7 @@ MAIN_FILE := cmd/$(APP_NAME)/main.go
 
 EXECUTABLE := $(BUILD_DIR)/$(APP_NAME)
 
+GOLANG_BIN := $(shell go env GOPATH)/bin
 GOLANGCI_LINT_VERSION := v1.62.2
 
 
@@ -15,9 +16,9 @@ all: lint test build
 ci: check-fmt lint test
 
 
-install-lint:
+install-lint-ci:
 	@echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- $(GOLANGCI_LINT_VERSION)
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOLANG_BIN) $(GOLANGCI_LINT_VERSION)
 	@echo "golangci-lint $(GOLANGCI_LINT_VERSION) installed."
 
 
@@ -51,7 +52,7 @@ check-fmt:
 
 lint:
 	@echo "Running golangci-lint..."
-	PATH=$(PATH):$(shell go env GOPATH)/bin golangci-lint run
+	PATH=$(PATH):$(GOLANG_BIN) golangci-lint run
 
 
 test:
