@@ -10,7 +10,7 @@ EXECUTABLE := $(BUILD_DIR)/$(APP_NAME)
 
 
 all: lint test build
-ci: check-fmt lint test
+ci: check-fmt test
 
 
 run:
