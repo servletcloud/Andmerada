@@ -2,3 +2,18 @@ linters:
   enable-all: true
   disable:
     - exportloopref
+    - gofumpt
+
+linters-settings:
+  depguard:
+    rules:
+      main:
+        allow:
+          - log
+          - os
+          - strings
+          - path/filepath
+          - embed
+          - github.com/spf13/cobra
+          - github.com/servletcloud/Andmerada/internal/cmd
+          - github.com/servletcloud/Andmerada/internal/resources

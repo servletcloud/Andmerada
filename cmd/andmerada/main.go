@@ -1,7 +1,13 @@
 package main
 
-import "log"
+import (
+	"log"
+
+	"github.com/servletcloud/Andmerada/internal/cmd"
+)
 
 func main() {
-	log.Println("Hello, this is Andmerada!")
+	if err := cmd.RootCommand().Execute(); err != nil {
+		log.Fatal(err)
+	}
 }
