@@ -37,7 +37,7 @@ Suggestion:
 
 func initializeProject(targetDir string) {
 	if err := os.MkdirAll(targetDir, dirPerm); err != nil {
-		log.Fatalf("failed to create directory %s: %v", targetDir, err)
+		log.Panicf("failed to create directory %s: %v", targetDir, err)
 	}
 
 	configFilePath := filepath.Join(targetDir, rootConfigFilename)
@@ -48,14 +48,14 @@ func initializeProject(targetDir string) {
 			log.Fatal(msgProjectAlreadyExists)
 		}
 
-		log.Fatalf("Failed to create file: %v\n", err)
+		log.Panicf("Failed to create file: %v\n", err)
 	}
 
 	projectName := filepath.Base(filepath.Dir(configFilePath))
 	content := strings.ReplaceAll(resources.TemplateAndmeradaYml(), "{{project_name}}", projectName)
 
 	if _, err = file.WriteString(content); err != nil {
-		log.Fatalf("Failed to create file: %v\n", err)
+		log.Panicf("Failed to create file: %v\n", err)
 	}
 
 	log.Printf("Project '%v' initialized successfully in %v", projectName, targetDir)
