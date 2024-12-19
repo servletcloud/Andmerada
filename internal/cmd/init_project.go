@@ -10,6 +10,9 @@ import (
 )
 
 const (
+	filePerm = 0644 // Owner: read/write, Group/Others: read
+	dirPerm  = 0755 // Owner: read/write/execute, Group/Others: read/execute
+
 	rootConfigFilename string = "andmerada.yml"
 
 	msgProjectAlreadyExists string = `Error: Project initialization failed.
@@ -33,12 +36,12 @@ Suggestion:
 )
 
 func initializeProject(targetDir string) {
-	if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(targetDir, dirPerm); err != nil {
 		log.Fatalf("failed to create directory %s: %v", targetDir, err)
 	}
 
 	configFilePath := filepath.Join(targetDir, rootConfigFilename)
-	file, err := os.OpenFile(configFilePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, os.ModePerm)
+	file, err := os.OpenFile(configFilePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filePerm)
 
 	if err != nil {
 		if os.IsExist(err) {
