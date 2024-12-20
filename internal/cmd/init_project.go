@@ -1,65 +1,41 @@
 package cmd
 
 import (
-	"log"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/resources"
 )
 
 const (
-	filePerm = 0644 // Owner: read/write, Group/Others: read
-	dirPerm  = 0755 // Owner: read/write/execute, Group/Others: read/execute
-
 	rootConfigFilename string = "andmerada.yml"
-
-	msgProjectAlreadyExists string = `Error: Project initialization failed.
-The file 'andmerada.yml' already exists in the specified directory.
-
-Suggestion:
-- If this is an existing Andmerada project, you can start by running commands like:
-  andmerada create-migration "Add users table"
-
-- If you want to reinitialize the project, please remove or back up the existing 'andmerada.yml' file and try again.`
-
-	msgNextSteps string = `Next Steps:
-1. Configure your project:
-   Edit 'andmerada.yml' to update the project name, migrations table name, and other settings.
-
-2. Create your first migration:
-   andmerada create-migration "Add users table"
-
-3. Run your first migration:
-   andmerada migrate`
 )
 
-func initializeProject(targetDir string) {
-	if err := os.MkdirAll(targetDir, dirPerm); err != nil {
-		log.Panicf("failed to create directory %s: %v", targetDir, err)
+var (
+	errConfigFileAlreadyExists = errors.New("a specific error occurred")
+)
+
+func initializeProject(targetDir string) error {
+	if err := os.MkdirAll(targetDir, osutil.DirPerm0755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
 	}
 
-	configFilePath := filepath.Join(targetDir, rootConfigFilename)
-	file, err := os.OpenFile(configFilePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filePerm)
+	configPath := filepath.Join(targetDir, rootConfigFilename)
 
-	if err != nil {
-		if os.IsExist(err) {
-			log.Fatal(msgProjectAlreadyExists)
-		}
-
-		log.Panicf("Failed to create file: %v\n", err)
-	}
-
-	projectName := filepath.Base(filepath.Dir(configFilePath))
+	projectName := filepath.Base(targetDir)
 	content := strings.ReplaceAll(resources.TemplateAndmeradaYml(), "{{project_name}}", projectName)
 
-	if _, err = file.WriteString(content); err != nil {
-		log.Panicf("Failed to create file: %v\n", err)
+	if err := osutil.WriteFile(configPath, content, osutil.O_CREATE_EXCL_WRONLY, osutil.FilePerm0644); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("configuration file %s already exists: %w", configPath, errConfigFileAlreadyExists)
+		}
+
+		return fmt.Errorf("can not create or write to configuration file %s: %w", configPath, err)
 	}
 
-	log.Printf("Project '%v' initialized successfully in %v", projectName, targetDir)
-	log.Println(msgNextSteps)
-
-	defer file.Close()
+	return nil
 }
