@@ -1,11 +1,31 @@
 package cmd
 
 import (
+	"errors"
 	"log"
 	"os"
 
 	"github.com/spf13/cobra"
 )
+
+const msgProjectAlreadyExists string = `Error: Project initialization failed.
+The file 'andmerada.yml' already exists in the specified directory.
+
+Suggestion:
+- If this is an existing Andmerada project, you can start by running commands like:
+ andmerada create-migration "Add users table"
+
+- If you want to reinitialize the project, please remove or back up the existing 'andmerada.yml' file and try again.`
+
+const msgInitCompleted string = `Next Steps:
+1. Configure your project:
+  Edit 'andmerada.yml' to update the project name, migrations table name, and other settings.
+
+2. Create your first migration:
+  andmerada create-migration "Add users table"
+
+3. Run your first migration:
+  andmerada migrate`
 
 func initCommand() *cobra.Command {
 	//nolint:exhaustruct
@@ -28,7 +48,16 @@ already exist and generates an 'andmerada.yml' configuration file.`,
 				}
 				targetDir = currentDir
 			}
-			initializeProject(targetDir)
+
+			if err := initializeProject(targetDir); err != nil {
+				if errors.Is(err, errConfigFileAlreadyExists) {
+					log.Fatalln(msgProjectAlreadyExists)
+				}
+				log.Panic(err)
+			}
+
+			log.Printf("Project initialized successfully in %v", targetDir)
+			log.Println(msgInitCompleted)
 		},
 	}
 }

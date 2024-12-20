@@ -11,9 +11,12 @@ linters-settings:
         allow:
           - log
           - os
+          - fmt
           - strings
+          - errors
           - path/filepath
           - embed
           - github.com/spf13/cobra
+          - github.com/servletcloud/Andmerada/internal/osutil
           - github.com/servletcloud/Andmerada/internal/cmd
           - github.com/servletcloud/Andmerada/internal/resources
