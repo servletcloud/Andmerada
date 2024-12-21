@@ -9,11 +9,11 @@ GOLANG_BIN := $(shell go env GOPATH)/bin
 GOLANGCI_LINT_VERSION := v1.62.2
 
 
-.PHONY: all ci run build clean fmt test lint check-fmt install-lint
+.PHONY: all ci run build clean fmt test test_with_race lint check-fmt install-lint
 
 
 all: lint test build
-ci: check-fmt lint test
+ci: check-fmt lint test_with_race
 
 
 install-lint-ci:
@@ -55,9 +55,14 @@ lint:
 	PATH=$(PATH):$(GOLANG_BIN) golangci-lint run
 
 
-test:
+test_with_race:
 	@echo "Running tests..."
 	go test -shuffle on -timeout=30s -race ./...
+
+
+test:
+	@echo "Running tests..."
+	go test -shuffle on -timeout=30s ./...
 
 
 clean:
