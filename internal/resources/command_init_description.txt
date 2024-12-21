@@ -1,0 +1,6 @@
+init [directory]
+Initialize a new Andmerada migration project
+The 'andmerada init' command sets up a new migration project.
+If no directory is provided, the current directory will be used.
+It pre-creates the specified directory (including nested folders) if it does not
+already exist and generates an 'andmerada.yml' configuration file.

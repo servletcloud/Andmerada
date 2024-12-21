@@ -1,0 +1,8 @@
+Error: Project initialization failed.
+The file 'andmerada.yml' already exists in the specified directory.
+
+Suggestion:
+- If this is an existing Andmerada project, you can start by running commands like:
+ andmerada create-migration "Add users table"
+
+- If you want to reinitialize the project, please remove or back up the existing 'andmerada.yml' file and try again.

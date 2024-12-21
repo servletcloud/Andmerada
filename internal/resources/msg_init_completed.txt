@@ -1,0 +1,9 @@
+Next Steps:
+1. Configure your project:
+  Edit 'andmerada.yml' to update the project name, migrations table name, and other settings.
+
+2. Create your first migration:
+  andmerada create-migration "Add users table"
+
+3. Run your first migration:
+  andmerada migrate
