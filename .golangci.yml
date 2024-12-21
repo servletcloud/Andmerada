@@ -16,7 +16,10 @@ linters-settings:
           - errors
           - path/filepath
           - embed
+          - testing
           - github.com/spf13/cobra
           - github.com/servletcloud/Andmerada/internal/osutil
           - github.com/servletcloud/Andmerada/internal/cmd
           - github.com/servletcloud/Andmerada/internal/resources
+          - github.com/stretchr/testify/assert
+          - github.com/stretchr/testify/require

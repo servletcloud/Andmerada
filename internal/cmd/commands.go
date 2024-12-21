@@ -30,8 +30,8 @@ func initCommand() *cobra.Command {
 				targetDir = currentDir
 			}
 
-			if err := initializeProject(targetDir); err != nil {
-				if errors.Is(err, errConfigFileAlreadyExists) {
+			if err := InitializeProject(targetDir); err != nil {
+				if errors.Is(err, ErrConfigFileAlreadyExists) {
 					log.Fatalln(resources.MsgErrProjectExists())
 				}
 				log.Panic(err)
