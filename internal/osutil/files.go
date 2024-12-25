@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"unicode"
 )
 
 const (
@@ -12,17 +14,19 @@ const (
 
 	FilePerm0644 = 0644 // Owner: read/write, Group/Others: read
 	DirPerm0755  = 0755 // Owner: read/write/execute, Group/Others: read/execute
+
+	filenameAllowedChars = "abcdefghijklmnopqrstuvwxyz0123456789._-"
 )
 
-func WriteFile(path string, content string, flag int, perm os.FileMode) error {
-	file, err := os.OpenFile(path, flag, perm)
+func WriteFileExcl(path string, content string) error {
+	file, err := os.OpenFile(path, O_CREATE_EXCL_WRONLY, FilePerm0644)
 	if err != nil {
 		return fmt.Errorf("failed to create file %s: %w", path, err)
 	}
 
 	defer func() {
 		if err := file.Close(); err != nil {
-			log.Printf("Can not close file %s %v", path, err)
+			log.Printf("cannot close file %s %v", path, err)
 		}
 	}()
 
@@ -31,4 +35,33 @@ func WriteFile(path string, content string, flag int, perm os.FileMode) error {
 	}
 
 	return nil
+}
+
+func GetwdOrPanic() string {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		panic(fmt.Sprintf("Error getting current directory: %v\n", err))
+	}
+
+	return currentDir
+}
+
+func NormalizePath(name string) string {
+	var result strings.Builder
+
+	var lastChar rune
+
+	for _, char := range name {
+		char = unicode.ToLower(char)
+		if strings.ContainsRune(filenameAllowedChars, char) {
+			result.WriteRune(char)
+			lastChar = char
+		} else if lastChar != '_' {
+			result.WriteRune('_')
+
+			lastChar = '_'
+		}
+	}
+
+	return strings.Trim(result.String(), "_-.")
 }

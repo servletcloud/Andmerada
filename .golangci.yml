@@ -13,9 +13,13 @@ linters-settings:
           - os
           - fmt
           - strings
+          - unicode
           - errors
           - path/filepath
           - embed
+          - time
+          - strconv
+          - regexp
           - testing
           - github.com/spf13/cobra
           - github.com/servletcloud/Andmerada/internal/osutil
@@ -23,3 +27,5 @@ linters-settings:
           - github.com/servletcloud/Andmerada/internal/resources
           - github.com/stretchr/testify/assert
           - github.com/stretchr/testify/require
+          - github.com/servletcloud/Andmerada/internal/source
+          - github.com/servletcloud/Andmerada/internal/tests

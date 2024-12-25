@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/resources"
@@ -16,25 +15,25 @@ const (
 )
 
 var (
-	ErrConfigFileAlreadyExists = errors.New("a specific error occurred")
+	ErrConfigFileAlreadyExists = errors.New("configuration file already exists")
 )
 
-func InitializeProject(targetDir string) error {
-	if err := os.MkdirAll(targetDir, osutil.DirPerm0755); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
+func InitializeProject(projectDir string) error {
+	if err := os.MkdirAll(projectDir, osutil.DirPerm0755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", projectDir, err)
 	}
 
-	configPath := filepath.Join(targetDir, rootConfigFilename)
+	configPath := filepath.Join(projectDir, rootConfigFilename)
 
-	projectName := filepath.Base(targetDir)
-	content := strings.ReplaceAll(resources.TemplateAndmeradaYml(), "{{project_name}}", projectName)
+	projectName := filepath.Base(projectDir)
+	content := resources.TemplateAndmeradaYml(projectName)
 
-	if err := osutil.WriteFile(configPath, content, osutil.O_CREATE_EXCL_WRONLY, osutil.FilePerm0644); err != nil {
+	if err := osutil.WriteFileExcl(configPath, content); err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return fmt.Errorf("configuration file %s already exists: %w", configPath, ErrConfigFileAlreadyExists)
 		}
 
-		return fmt.Errorf("can not create or write to configuration file %s: %w", configPath, err)
+		return fmt.Errorf("cannot create or write to configuration file %s: %w", configPath, err)
 	}
 
 	return nil

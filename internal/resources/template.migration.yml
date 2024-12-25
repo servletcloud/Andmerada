@@ -1,0 +1,25 @@
+name: "{{name}}"
+
+up:
+  <<: *configuration_defaults
+  file: ./up.sql
+
+down:
+  <<: *configuration_defaults
+  file: ./down.sql
+  block: false
+  block_reason: "This migration contains irreversible changes."
+
+configuration: &configuration_defaults
+  # If "andmerada migrate" stops unexpectedly (e.g., due to a segfault, OOM, or SIGKILL),
+  # the next attempt to run "andmerada migrate" will acquire the lock no earlier than
+  # the last migration's run time plus "duration.max".
+  #
+  # - Supported units are "s" (seconds), "m" (minutes), and "h" (hours).
+  # - Example values: "5s", "30s", "1m", "2h".
+  duration.max: 60s
+
+  # Any information in this section will be copied to
+  # the migrations table for historical purposes.
+  meta:
+    # author: "John Doe"

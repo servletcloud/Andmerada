@@ -1,0 +1,8 @@
+Migration successfully created at {{dir}}
+
+Next Steps:
+1. Edit `up.sql` to define the changes you want to apply.
+2. (Optional) Edit `down.sql` for rollback logic or leave it empty if rollback is not required.
+3. Customize `migration.yml` for metadata and additional settings.
+
+Run `andmerada migrate` to apply this migration when ready.
