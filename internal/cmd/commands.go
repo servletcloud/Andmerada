@@ -3,8 +3,9 @@ package cmd
 import (
 	"errors"
 	"log"
-	"os"
+	"time"
 
+	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/resources"
 	"github.com/spf13/cobra"
 )
@@ -19,27 +20,56 @@ func initCommand() *cobra.Command {
 		Long:  description.Long,
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(_ *cobra.Command, args []string) {
-			var targetDir string
+			var projectDir string
 			if len(args) > 0 {
-				targetDir = args[0]
+				projectDir = args[0]
 			} else {
-				currentDir, err := os.Getwd()
-				if err != nil {
-					log.Fatalf("Error getting current directory: %v\n", err)
-				}
-				targetDir = currentDir
+				projectDir = osutil.GetwdOrPanic()
 			}
 
-			if err := InitializeProject(targetDir); err != nil {
+			if err := InitializeProject(projectDir); err != nil {
 				if errors.Is(err, ErrConfigFileAlreadyExists) {
 					log.Fatalln(resources.MsgErrProjectExists())
 				}
 				log.Panic(err)
 			}
 
-			log.Printf("Project initialized successfully in %v", targetDir)
+			log.Printf("Project initialized successfully in %v", projectDir)
 			log.Println(resources.MsgInitCompleted())
 		},
+	}
+}
+
+func createMigrationCmd() *cobra.Command {
+	description := resources.LoadCrMigrationDescription()
+
+	//nolint:exhaustruct
+	return &cobra.Command{
+		Use:   description.Use,
+		Short: description.Short,
+		Long:  description.Long,
+		Args:  cobra.ExactArgs(1),
+		Run: func(_ *cobra.Command, args []string) {
+			currentDir := osutil.GetwdOrPanic()
+			name := args[0]
+			now := time.Now().UTC()
+
+			result, err := CreateMigration(currentDir, name, now)
+
+			if err != nil {
+				if errors.Is(err, ErrMigrationAlreadyExists) {
+					log.Fatalln(err)
+				}
+				log.Panic(err)
+			}
+
+			if !result.Latest {
+				log.Println(resources.MsgMigrationNotLatest())
+			}
+
+			log.Println(resources.MsgMigrationCreated(result.BaseDir))
+		},
+		Example: `andmerada create-migration "Add users table"`,
 	}
 }
 
@@ -53,6 +83,7 @@ func RootCommand() *cobra.Command {
 		Version: "0.0.1",
 	}
 	rootCmd.AddCommand(initCommand())
+	rootCmd.AddCommand(createMigrationCmd())
 
 	return rootCmd
 }

@@ -1,0 +1,11 @@
+Warning: The created migration is not the latest one.
+
+This may occur if:
+1. Another migration was created after the current timestamp.
+2. The system clock is incorrect.
+
+Recommendation:
+- Verify the order of migrations and adjust the timestamps if necessary to maintain the correct sequence.
+- Ensure all migrations are applied in chronological order to avoid unexpected behavior.
+
+To proceed, ensure the migration sequence is intentional.

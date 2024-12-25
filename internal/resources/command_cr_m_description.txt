@@ -1,0 +1,12 @@
+create-migration [migration-name]
+Creates a new migration with a timestamped folder structure
+The create-migration command generates a timestamped folder structure for a new migration.
+
+The folder name is composed of a `YYYYMMDDHHMMSS` UTC timestamp followed by the normalized `migration-name`.
+The `migration-name` is automatically converted to lowercase to avoid collisions on case-insensitive file systems (e.g., Windows).
+Additionally, any characters not acceptable for file names are replaced with underscores (`_`) to ensure compatibility across all platforms.
+
+The folder includes the following files:
+  - `up.sql`: For the migration's SQL statements.
+  - `down.sql`: For rollback SQL statements.
+  - `migration.yml`: Metadata describing the migration.
