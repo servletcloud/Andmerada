@@ -1,4 +1,4 @@
-Migration successfully created in {{dir}}
+Migration successfully created at {{dir}}
 
 Next Steps:
 1. Edit `up.sql` to define the changes you want to apply.

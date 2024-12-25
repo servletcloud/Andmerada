@@ -31,6 +31,6 @@ func TestMsgMigrationCreated(t *testing.T) {
 
 	content := resources.MsgMigrationCreated("20060102150405_create_users")
 
-	assert.Contains(t, content, "Migration successfully created in 20060102150405_create_users")
+	assert.Contains(t, content, "Migration successfully created at 20060102150405_create_users")
 	tests.AssertPlaceholdersResolved(t, content)
 }

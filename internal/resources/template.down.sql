@@ -1,4 +1,4 @@
--- Leave down.sql empty if you want the rollback to have no effect
+-- Leave this file empty if you want the rollback to have no effect
 BEGIN;
 
 -- Set timeouts to avoid long-running or blocking queries
