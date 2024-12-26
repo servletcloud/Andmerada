@@ -1,2 +1,3 @@
+---
 project: "{{project_name}}"
 version_table: migrations
