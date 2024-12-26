@@ -59,7 +59,7 @@ jobs:
           restore-keys: ${{ runner.os }}-docker-
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@2f53dc4f503f67bce8a535864aaa8d8ae6cbd7b8
+        uses: docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55
 
       - name: Pull yamllint image
         run: docker pull cytopia/yamllint
