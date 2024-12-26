@@ -9,11 +9,11 @@ GOLANG_BIN := $(shell go env GOPATH)/bin
 GOLANGCI_LINT_VERSION := v1.62.2
 
 
-.PHONY: all ci run build clean fmt test test_with_race lint check-fmt install-lint
+.PHONY: all ci run build clean fmt test test-with-race lint check-fmt install-lint
 
 
 all: lint test build
-ci: check-fmt lint test_with_race
+ci: check-fmt lint test-with-race
 
 
 install-lint-ci:
@@ -55,7 +55,12 @@ lint:
 	PATH=$(PATH):$(GOLANG_BIN) golangci-lint run
 
 
-test_with_race:
+lint-yml:
+	@echo "Running yamllint on YAML files..."
+	docker run --rm -v $(PWD)/internal:/data:Z cytopia/yamllint .
+
+
+test-with-race:
 	@echo "Running tests..."
 	go test -shuffle on -timeout=30s -race ./...
 
