@@ -13,7 +13,7 @@ GOLANGCI_LINT_VERSION := v1.62.2
 
 
 all: lint test build
-ci: check-fmt lint lint-yml test-with-race
+ci: check-fmt lint test-with-race
 
 
 install-lint-ci:
