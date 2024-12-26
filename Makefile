@@ -57,7 +57,7 @@ lint:
 
 lint-yml:
 	@echo "Running yamllint on YAML files..."
-	docker run --rm -it -v $(PWD)/internal:/data:Z cytopia/yamllint .
+	docker run --rm -v $(PWD)/internal:/data:Z cytopia/yamllint .
 
 
 test-with-race:
