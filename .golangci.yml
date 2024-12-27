@@ -21,8 +21,11 @@ linters-settings:
           - time
           - strconv
           - regexp
+          - encoding/json
           - testing
+          - gopkg.in/yaml.v3
           - github.com/spf13/cobra
+          - github.com/xeipuuv/gojsonschema
           - github.com/servletcloud/Andmerada/internal/osutil
           - github.com/servletcloud/Andmerada/internal/cmd
           - github.com/servletcloud/Andmerada/internal/resources
