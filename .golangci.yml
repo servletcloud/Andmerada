@@ -29,6 +29,7 @@ linters-settings:
           - github.com/servletcloud/Andmerada/internal/osutil
           - github.com/servletcloud/Andmerada/internal/cmd
           - github.com/servletcloud/Andmerada/internal/resources
+          - github.com/servletcloud/Andmerada/internal/schema
           - github.com/stretchr/testify/assert
           - github.com/stretchr/testify/require
           - github.com/servletcloud/Andmerada/internal/source

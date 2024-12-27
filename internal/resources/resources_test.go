@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/servletcloud/Andmerada/internal/resources"
+	"github.com/servletcloud/Andmerada/internal/schema"
 	"github.com/servletcloud/Andmerada/internal/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,7 +43,7 @@ func TestMigrationYMLTemplateMatchesSchema(t *testing.T) {
 	jsonData, err := json.Marshal(yamlData)
 	require.NoError(t, err)
 
-	schemaLoader := gojsonschema.NewReferenceLoader("file://./../../api/schema/migration.yml.v1.json")
+	schemaLoader := gojsonschema.NewStringLoader(schema.GetMigrationSchema())
 	documentLoader := gojsonschema.NewBytesLoader(jsonData)
 
 	result, err := gojsonschema.Validate(schemaLoader, documentLoader)

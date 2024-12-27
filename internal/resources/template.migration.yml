@@ -1,6 +1,6 @@
 ---
 # yamllint disable rule:line-length
-# yaml-language-server: $schema=https://raw.githubusercontent.com/servletcloud/Andmerada/refs/heads/main/api/schema/migration.yml.v1.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/servletcloud/Andmerada/refs/heads/main/internal/schema/migration.yml.v1.json
 # yamllint enable
 name: "{{name}}"
 
