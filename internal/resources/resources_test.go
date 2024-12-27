@@ -43,7 +43,7 @@ func TestMigrationYMLTemplateMatchesSchema(t *testing.T) {
 	require.NoError(t, err)
 
 	schemaLoader := gojsonschema.NewReferenceLoader("file://./../../api/schema/migration.yml.v1.json")
-	documentLoader := gojsonschema.NewStringLoader(string(jsonData))
+	documentLoader := gojsonschema.NewBytesLoader(jsonData)
 
 	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
 	require.NoError(t, err)
