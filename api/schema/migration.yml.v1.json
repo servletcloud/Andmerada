@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Migration Configuration",
+  "type": "object",
+  "required": ["name", "up", "down"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the migration",
+      "maxLength": 255
+    },
+    "up": {
+      "type": "object",
+      "description": "Configuration for the up migration",
+      "required": ["file"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Path to the up migration SQL file"
+        }
+      }
+    },
+    "down": {
+      "type": "object",
+      "description": "Configuration for the down migration",
+      "required": ["file"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Path to the down migration SQL file"
+        },
+        "block": {
+          "type": "boolean",
+          "description": "Whether the down migration is blocked",
+          "default": false
+        },
+        "block_reason": {
+          "type": "string",
+          "description": "Reason for blocking the down migration",
+          "maxLength": 255,
+          "default": "This migration contains irreversible changes."
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Additional metadata for the migration",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Full description of the migration"
+        }
+      }
+    }
+  }
+}
