@@ -1,20 +1,16 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
+	"unicode/utf8"
 
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/resources"
 	"github.com/servletcloud/Andmerada/internal/source"
 )
-
-const NameMaxLength = 1000
-
-var ErrMigrationAlreadyExists = errors.New("a migration with the same ID already exists")
 
 type CreateMigrationResult struct {
 	BaseDir string
@@ -22,6 +18,10 @@ type CreateMigrationResult struct {
 }
 
 func CreateMigration(projectDir string, name string, time time.Time) (CreateMigrationResult, error) {
+	if utf8.RuneCountInString(name) > MaxNameLength {
+		return CreateMigrationResult{}, ErrNameExceeds255
+	}
+
 	id := source.NewIDFromTime(time) //nolint:varnamelen
 	latest, err := verifyNewID(id, projectDir)
 

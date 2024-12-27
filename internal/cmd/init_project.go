@@ -5,27 +5,24 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"unicode/utf8"
 
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/resources"
 )
 
-const (
-	rootConfigFilename string = "andmerada.yml"
-)
-
-var (
-	ErrConfigFileAlreadyExists = errors.New("configuration file already exists")
-)
-
 func InitializeProject(projectDir string) error {
+	projectName := filepath.Base(projectDir)
+	if utf8.RuneCountInString(projectName) > MaxNameLength {
+		return ErrNameExceeds255
+	}
+
 	if err := os.MkdirAll(projectDir, osutil.DirPerm0755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", projectDir, err)
 	}
 
 	configPath := filepath.Join(projectDir, rootConfigFilename)
 
-	projectName := filepath.Base(projectDir)
 	content := resources.TemplateAndmeradaYml(projectName)
 
 	if err := osutil.WriteFileExcl(configPath, content); err != nil {

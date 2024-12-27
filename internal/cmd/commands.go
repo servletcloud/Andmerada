@@ -30,6 +30,8 @@ func initCommand() *cobra.Command {
 			if err := InitializeProject(projectDir); err != nil {
 				if errors.Is(err, ErrConfigFileAlreadyExists) {
 					log.Fatalln(resources.MsgErrProjectExists())
+				} else if errors.Is(err, ErrNameExceeds255) {
+					log.Fatalln("Error: Project name cannot exceed 255 characters in length")
 				}
 				log.Panic(err)
 			}
@@ -59,6 +61,8 @@ func createMigrationCmd() *cobra.Command {
 			if err != nil {
 				if errors.Is(err, ErrMigrationAlreadyExists) {
 					log.Fatalln(err)
+				} else if errors.Is(err, ErrNameExceeds255) {
+					log.Fatalln("Error: Migration name cannot exceed 255 characters in length")
 				}
 				log.Panic(err)
 			}
