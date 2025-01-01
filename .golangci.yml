@@ -35,3 +35,4 @@ linters-settings:
           - github.com/stretchr/testify/require
           - github.com/servletcloud/Andmerada/internal/source
           - github.com/servletcloud/Andmerada/internal/tests
+          - github.com/servletcloud/Andmerada/internal/ymlutil

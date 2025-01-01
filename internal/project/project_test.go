@@ -8,6 +8,7 @@ import (
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/project"
 	"github.com/servletcloud/Andmerada/internal/tests"
+	"github.com/servletcloud/Andmerada/internal/ymlutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -39,6 +40,7 @@ func TestInitialize(t *testing.T) {
 	})
 }
 
+//nolint:funlen
 func TestLoad(t *testing.T) {
 	t.Parallel()
 
@@ -89,5 +91,18 @@ func TestLoad(t *testing.T) {
 		var yamlError *yaml.TypeError
 
 		assert.ErrorAs(t, err, &yamlError)
+	})
+
+	t.Run("returns ymlutil.ErrSchemaValidation when JSON schema is invalid", func(t *testing.T) {
+		t.Parallel()
+
+		projectDir := t.TempDir()
+		configPath := filepath.Join(projectDir, "andmerada.yml")
+
+		require.NoError(t, osutil.WriteFileExcl(configPath, "---"))
+
+		_, err := project.Load(projectDir)
+
+		assert.ErrorIs(t, err, ymlutil.ErrSchemaValidation)
 	})
 }
