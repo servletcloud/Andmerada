@@ -1,11 +1,11 @@
-package cmd_test
+package project_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/servletcloud/Andmerada/internal/cmd"
+	"github.com/servletcloud/Andmerada/internal/project"
 	"github.com/servletcloud/Andmerada/internal/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +19,7 @@ func TestInitProject(t *testing.T) {
 
 		projectDir := filepath.Join(t.TempDir(), "migrations/main_db_project")
 
-		require.NoError(t, cmd.InitializeProject(projectDir))
+		require.NoError(t, project.Initialize(projectDir))
 
 		assert.DirExists(t, projectDir)
 
@@ -33,6 +33,6 @@ func TestInitProject(t *testing.T) {
 
 		require.NoError(t, os.WriteFile(filepath.Join(projectDir, "andmerada.yml"), []byte("hello"), 0600))
 
-		assert.ErrorIs(t, cmd.InitializeProject(projectDir), cmd.ErrConfigFileAlreadyExists)
+		assert.ErrorIs(t, project.Initialize(projectDir), project.ErrConfigFileAlreadyExists)
 	})
 }
