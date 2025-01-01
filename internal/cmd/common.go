@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/servletcloud/Andmerada/internal/project"
+	"github.com/servletcloud/Andmerada/internal/ymlutil"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,6 +24,10 @@ func mustLoadProject(dir string) project.Project {
 
 	if errors.Is(err, os.ErrNotExist) {
 		log.Fatalf("Project is not initialized. Initialize with `andmerada init %v`", dir)
+	}
+
+	if errors.Is(err, ymlutil.ErrSchemaValidation) {
+		log.Fatalf("Schema validation failed for andmerada.yml: %v", err)
 	}
 
 	var yamlError *yaml.TypeError

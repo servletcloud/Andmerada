@@ -1,3 +1,5 @@
 ---
+# yamllint disable rule:line-length
+# yaml-language-server: $schema=https://raw.githubusercontent.com/servletcloud/Andmerada/refs/heads/main/internal/schema/andmerada.yml.v1.json
+# yamllint enable
 name: "{{project_name}}"
-version_table: migrations
