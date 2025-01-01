@@ -11,17 +11,7 @@ import (
 	"github.com/servletcloud/Andmerada/internal/resources"
 )
 
-const (
-	MaxNameLength      = 255
-	rootConfigFilename = "andmerada.yml"
-)
-
-var (
-	ErrConfigFileAlreadyExists = errors.New("configuration file already exists")
-	ErrNameExceeds255          = errors.New("name exceeds 255 characters")
-)
-
-func Initialize(dir string) error {
+func initialize(dir string) error {
 	projectName := filepath.Base(dir)
 	if utf8.RuneCountInString(projectName) > MaxNameLength {
 		return ErrNameExceeds255
