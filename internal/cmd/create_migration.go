@@ -25,6 +25,8 @@ func createMigrationCommand() *cobra.Command {
 			name := args[0]
 			now := time.Now().UTC()
 
+			ensureProjectInitialized(currentDir)
+
 			result, err := source.Create(currentDir, name, now)
 
 			if err != nil {

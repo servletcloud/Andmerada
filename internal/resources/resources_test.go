@@ -18,7 +18,7 @@ func TestTemplateAndmeradaYml(t *testing.T) {
 
 	content := resources.TemplateAndmeradaYml("maindb")
 
-	assert.Contains(t, content, `project: "maindb"`)
+	assert.Contains(t, content, `name: "maindb"`)
 	tests.AssertPlaceholdersResolved(t, content)
 }
 
