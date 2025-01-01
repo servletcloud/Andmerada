@@ -1,6 +1,7 @@
-package cmd
+package source
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,42 +10,54 @@ import (
 
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/resources"
-	"github.com/servletcloud/Andmerada/internal/source"
 )
 
-type CreateMigrationResult struct {
+type CreateSourceResult struct {
 	BaseDir string
 	Latest  bool
 }
 
-func CreateMigration(projectDir string, name string, time time.Time) (CreateMigrationResult, error) {
+const (
+	MaxNameLength = 255
+
+	MigrationYmlFilename = "migration.yml"
+	UpSQLFilename        = "up.sql"
+	DownSQLFilename      = "down.sql"
+)
+
+var (
+	ErrNameExceeds255      = errors.New("name exceeds 255 characters")
+	ErrSourceAlreadyExists = errors.New("a migration with the same ID already exists")
+)
+
+func Create(projectDir string, name string, time time.Time) (CreateSourceResult, error) {
 	if utf8.RuneCountInString(name) > MaxNameLength {
-		return CreateMigrationResult{}, ErrNameExceeds255
+		return CreateSourceResult{}, ErrNameExceeds255
 	}
 
-	id := source.NewIDFromTime(time) //nolint:varnamelen
+	id := NewIDFromTime(time) //nolint:varnamelen
 	latest, err := verifyNewID(id, projectDir)
 
 	if err != nil {
-		return CreateMigrationResult{}, err
+		return CreateSourceResult{}, err
 	}
 
 	baseMigrationDir := fmt.Sprintf("%v_%v", id, osutil.NormalizePath(name))
 	migrationDir := filepath.Join(projectDir, baseMigrationDir)
 
 	if err = createMigration(name, migrationDir); err != nil {
-		return CreateMigrationResult{}, err
+		return CreateSourceResult{}, err
 	}
 
-	return CreateMigrationResult{BaseDir: baseMigrationDir, Latest: latest}, nil
+	return CreateSourceResult{BaseDir: baseMigrationDir, Latest: latest}, nil
 }
 
-func verifyNewID(newID source.MigrationID, projectDir string) (bool, error) {
+func verifyNewID(newID MigrationID, projectDir string) (bool, error) {
 	unique := true
 	collidesWith := ""
 	latest := true
 
-	err := source.Scan(projectDir, func(existingID source.MigrationID, name string) bool {
+	err := Scan(projectDir, func(existingID MigrationID, name string) bool {
 		if newID == existingID {
 			unique = false
 			collidesWith = name
@@ -66,7 +79,7 @@ func verifyNewID(newID source.MigrationID, projectDir string) (bool, error) {
 			"an existing migration %v with the same ID %v already exists: %w",
 			collidesWith,
 			newID,
-			ErrMigrationAlreadyExists,
+			ErrSourceAlreadyExists,
 		)
 
 		return latest, err
@@ -81,18 +94,18 @@ func createMigration(name, dir string) error {
 	}
 
 	configContent := resources.TemplateMigrationYml(name)
-	configFilename := filepath.Join(dir, source.MigrationYmlFilename)
+	configFilename := filepath.Join(dir, MigrationYmlFilename)
 
 	if err := osutil.WriteFileExcl(configFilename, configContent); err != nil {
 		return fmt.Errorf("cannot create %v: %w", configFilename, err)
 	}
 
-	upSQLFilename := filepath.Join(dir, source.UpSQLFilename)
+	upSQLFilename := filepath.Join(dir, UpSQLFilename)
 	if err := osutil.WriteFileExcl(upSQLFilename, resources.TemplateUpSQL()); err != nil {
 		return fmt.Errorf("cannot create %v: %w", upSQLFilename, err)
 	}
 
-	downSQLFilename := filepath.Join(dir, source.DownSQLFilename)
+	downSQLFilename := filepath.Join(dir, DownSQLFilename)
 	if err := osutil.WriteFileExcl(downSQLFilename, resources.TemplateDownSQL()); err != nil {
 		return fmt.Errorf("cannot create %v: %w", downSQLFilename, err)
 	}

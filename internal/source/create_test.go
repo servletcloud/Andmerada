@@ -1,11 +1,11 @@
-package cmd_test
+package source_test
 
 import (
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/servletcloud/Andmerada/internal/cmd"
+	"github.com/servletcloud/Andmerada/internal/source"
 	"github.com/servletcloud/Andmerada/internal/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ func TestCreateMigration(t *testing.T) {
 
 		projectDir := t.TempDir()
 
-		result, err := cmd.CreateMigration(projectDir, name, timestamp)
+		result, err := source.Create(projectDir, name, timestamp)
 		require.NoError(t, err)
 
 		assert.Equal(t, "20241225112129_add_users_table", result.BaseDir)
@@ -39,8 +39,8 @@ func TestCreateMigration(t *testing.T) {
 
 		tests.MkDir(t, filepath.Join(projectDir, "20241225112129_conflicting_migration"))
 
-		_, err = cmd.CreateMigration(projectDir, name, timestamp)
-		require.ErrorIs(t, err, cmd.ErrMigrationAlreadyExists)
+		_, err = source.Create(projectDir, name, timestamp)
+		require.ErrorIs(t, err, source.ErrSourceAlreadyExists)
 
 		migrationDir := filepath.Join(projectDir, "20241225112129_add_users_table")
 		assert.NoDirExists(t, migrationDir)
@@ -53,7 +53,7 @@ func TestCreateMigration(t *testing.T) {
 
 		tests.MkDir(t, filepath.Join(projectDir, "29991225112129_migration_from_year_2999"))
 
-		result, err := cmd.CreateMigration(projectDir, name, timestamp)
+		result, err := source.Create(projectDir, name, timestamp)
 		require.NoError(t, err)
 
 		assert.Equal(t, "20241225112129_add_users_table", result.BaseDir)

@@ -2,36 +2,42 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
-	"os"
-	"path/filepath"
-	"unicode/utf8"
+	"log"
 
 	"github.com/servletcloud/Andmerada/internal/osutil"
+	"github.com/servletcloud/Andmerada/internal/project"
 	"github.com/servletcloud/Andmerada/internal/resources"
+	"github.com/spf13/cobra"
 )
 
-func InitializeProject(projectDir string) error {
-	projectName := filepath.Base(projectDir)
-	if utf8.RuneCountInString(projectName) > MaxNameLength {
-		return ErrNameExceeds255
+func initProjectCommand() *cobra.Command {
+	description := resources.LoadInitCommandDescription()
+
+	//nolint:exhaustruct
+	return &cobra.Command{
+		Use:   description.Use,
+		Short: description.Short,
+		Long:  description.Long,
+		Args:  cobra.MaximumNArgs(1),
+		Run: func(_ *cobra.Command, args []string) {
+			var projectDir string
+			if len(args) > 0 {
+				projectDir = args[0]
+			} else {
+				projectDir = osutil.GetwdOrPanic()
+			}
+
+			if err := project.Initialize(projectDir); err != nil {
+				if errors.Is(err, project.ErrConfigFileAlreadyExists) {
+					log.Fatalln(resources.MsgErrProjectExists())
+				} else if errors.Is(err, project.ErrNameExceeds255) {
+					log.Fatalln("Error: Project name cannot exceed 255 characters in length")
+				}
+				log.Panic(err)
+			}
+
+			log.Printf("Project initialized successfully in %v", projectDir)
+			log.Println(resources.MsgInitCompleted())
+		},
 	}
-
-	if err := os.MkdirAll(projectDir, osutil.DirPerm0755); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", projectDir, err)
-	}
-
-	configPath := filepath.Join(projectDir, rootConfigFilename)
-
-	content := resources.TemplateAndmeradaYml(projectName)
-
-	if err := osutil.WriteFileExcl(configPath, content); err != nil {
-		if errors.Is(err, os.ErrExist) {
-			return fmt.Errorf("configuration file %s already exists: %w", configPath, ErrConfigFileAlreadyExists)
-		}
-
-		return fmt.Errorf("cannot create or write to configuration file %s: %w", configPath, err)
-	}
-
-	return nil
 }
