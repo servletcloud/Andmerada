@@ -30,6 +30,9 @@ var templateDownSQL []byte
 //go:embed command_init_description.txt
 var commandInitDiscription []byte
 
+//go:embed command_lint_description.txt
+var commandLintDescription []byte
+
 //go:embed command_cr_m_description.txt
 var commandCrMigrationDescription []byte
 
@@ -67,6 +70,10 @@ func LoadCrMigrationDescription() CommandDescription {
 
 func LoadInitCommandDescription() CommandDescription {
 	return loadCommandDescription(commandInitDiscription)
+}
+
+func LoadLintCommandDescription() CommandDescription {
+	return loadCommandDescription(commandLintDescription)
 }
 
 func MsgInitCompleted() string {

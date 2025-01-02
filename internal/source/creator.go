@@ -1,7 +1,6 @@
 package source
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,31 +11,13 @@ import (
 	"github.com/servletcloud/Andmerada/internal/resources"
 )
 
-type CreateSourceResult struct {
-	BaseDir string
-	Latest  bool
-}
-
-const (
-	MaxNameLength = 255
-
-	MigrationYmlFilename = "migration.yml"
-	UpSQLFilename        = "up.sql"
-	DownSQLFilename      = "down.sql"
-)
-
-var (
-	ErrNameExceeds255      = errors.New("name exceeds 255 characters")
-	ErrSourceAlreadyExists = errors.New("a migration with the same ID already exists")
-)
-
-func Create(projectDir string, name string, time time.Time) (CreateSourceResult, error) {
+func create(projectDir string, name string, time time.Time) (CreateSourceResult, error) {
 	if utf8.RuneCountInString(name) > MaxNameLength {
 		return CreateSourceResult{}, ErrNameExceeds255
 	}
 
 	id := NewIDFromTime(time) //nolint:varnamelen
-	latest, err := verifyNewID(id, projectDir)
+	latest, err := verifyIDUnique(id, projectDir)
 
 	if err != nil {
 		return CreateSourceResult{}, err
@@ -45,14 +26,14 @@ func Create(projectDir string, name string, time time.Time) (CreateSourceResult,
 	baseMigrationDir := fmt.Sprintf("%v_%v", id, osutil.NormalizePath(name))
 	migrationDir := filepath.Join(projectDir, baseMigrationDir)
 
-	if err = createMigration(name, migrationDir); err != nil {
+	if err = createFiles(name, migrationDir); err != nil {
 		return CreateSourceResult{}, err
 	}
 
 	return CreateSourceResult{BaseDir: baseMigrationDir, Latest: latest}, nil
 }
 
-func verifyNewID(newID MigrationID, projectDir string) (bool, error) {
+func verifyIDUnique(newID MigrationID, projectDir string) (bool, error) {
 	unique := true
 	collidesWith := ""
 	latest := true
@@ -88,7 +69,7 @@ func verifyNewID(newID MigrationID, projectDir string) (bool, error) {
 	return latest, nil
 }
 
-func createMigration(name, dir string) error {
+func createFiles(name, dir string) error {
 	if err := os.Mkdir(dir, osutil.DirPerm0755); err != nil {
 		return fmt.Errorf("cannot create a migration directory %v: %w", dir, err)
 	}

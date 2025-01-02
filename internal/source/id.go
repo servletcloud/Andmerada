@@ -6,22 +6,18 @@ import (
 	"unicode"
 )
 
-type MigrationID uint64
-
 const (
-	EmptyMigrationID = MigrationID(0)
-
-	idLength                 = 14
-	formatTimeYYYYMMDDHHMMSS = "20060102150405"
+	idLength                   = 14
+	idFormatTimeYYYYMMDDHHMMSS = "20060102150405"
 )
 
-func NewIDFromTime(t time.Time) MigrationID {
-	timestamp := t.Format(formatTimeYYYYMMDDHHMMSS)
+func newIDFromTime(t time.Time) MigrationID {
+	timestamp := t.Format(idFormatTimeYYYYMMDDHHMMSS)
 
-	return fromString(timestamp)
+	return newIDFromStringUnsafe(timestamp)
 }
 
-func NewIDFromString(str string) MigrationID {
+func newIDFromString(str string) MigrationID {
 	if len(str) < idLength+1 {
 		return EmptyMigrationID
 	}
@@ -36,10 +32,10 @@ func NewIDFromString(str string) MigrationID {
 		return EmptyMigrationID
 	}
 
-	return fromString(str[:14])
+	return newIDFromStringUnsafe(str[:14])
 }
 
-func fromString(s string) MigrationID {
+func newIDFromStringUnsafe(s string) MigrationID {
 	id, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
 		panic(err)
