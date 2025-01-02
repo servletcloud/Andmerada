@@ -13,8 +13,12 @@ func RootCommand() *cobra.Command {
 		},
 		Version: "0.0.1",
 	}
-	rootCmd.AddCommand(initProjectCommand())
-	rootCmd.AddCommand(createMigrationCommand())
+
+	rootCmd.AddCommand(
+		initProjectCommand(),
+		createMigrationCommand(),
+		lintCommand(),
+	)
 
 	return rootCmd
 }

@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func Scan(projectDir string, callback func(id MigrationID, name string) bool) error {
+func scan(projectDir string, callback func(id MigrationID, name string) bool) error {
 	entries, err := os.ReadDir(projectDir)
 	if err != nil {
 		return fmt.Errorf("cannot read directory %v because: %w", projectDir, err)
