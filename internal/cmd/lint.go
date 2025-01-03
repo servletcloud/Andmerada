@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/servletcloud/Andmerada/internal/osutil"
@@ -109,13 +108,10 @@ func printLintError(err source.LintError) {
 }
 
 func sortLintErrorsByIDAsc(errors []source.LintError) {
-	sort.Slice(errors, func(i int, j int) bool {
-		err1 := errors[i]
-		err2 := errors[j]
+	slices.SortFunc(errors, func(a, b source.LintError) int {
+		slices.Sort(a.Files)
+		slices.Sort(b.Files)
 
-		slices.Sort(err1.Files)
-		slices.Sort(err2.Files)
-
-		return strings.Compare(err1.Files[0], err2.Files[0]) <= 0
+		return strings.Compare(a.Files[0], b.Files[0])
 	})
 }
