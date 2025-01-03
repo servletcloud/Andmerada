@@ -12,6 +12,33 @@ type CreateSourceResult struct {
 
 type MigrationID uint64
 
+type LintError struct {
+	Files   []string
+	Title   string
+	Details string
+}
+
+type LintReport struct {
+	Errors  []LintError
+	Warings []LintError
+}
+
+type Configuration struct {
+	Name string `yaml:"name"`
+
+	Up struct {
+		File string `yaml:"file"`
+	}
+
+	Down struct {
+		File        string `yaml:"file"`
+		Block       bool   `yaml:"block"`
+		BlockReason string `yaml:"block_reason"` //nolint:tagliatelle
+	}
+
+	Meta map[string]interface{} `yaml:"meta"`
+}
+
 const (
 	MaxNameLength = 255
 
@@ -37,6 +64,10 @@ func NewIDFromString(str string) MigrationID {
 
 func Create(projectDir string, name string, time time.Time) (CreateSourceResult, error) {
 	return create(projectDir, name, time)
+}
+
+func Lint(projectDir string, report *LintReport) error {
+	return lint(projectDir, report)
 }
 
 func Scan(projectDir string, callback func(id MigrationID, name string) bool) error {

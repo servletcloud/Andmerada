@@ -20,6 +20,8 @@ linters-settings:
           - embed
           - time
           - strconv
+          - slices
+          - sort
           - regexp
           - encoding/json
           - testing

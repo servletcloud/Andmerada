@@ -3,6 +3,5 @@ Validate migration files
 Validates that the migration files have correct syntax and can be run. Correct syntax means that the configuration files, such as 'andmerada.yml' and 'migration.yml', adhere to their schemas, and that referenced SQL scripts exist and are accessible. It does not check the SQL.
 
 Exit Codes:
-  - Exit code 2: Indicates critical errors that will cause 'andmerada migrate' to fail.
-  - Exit code 1: Indicates warnings; 'andmerada migrate' will still run.
+  - Exit code 1: Indicates critical errors that will cause 'andmerada migrate' to fail.
   - Exit code 0: No issues detected.
