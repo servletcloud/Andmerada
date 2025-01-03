@@ -7,6 +7,7 @@
     "name": {
       "type": "string",
       "description": "The name of the migration",
+      "minLength": 1,
       "maxLength": 255
     },
     "up": {
@@ -23,7 +24,7 @@
     "down": {
       "type": "object",
       "description": "Configuration for the down migration",
-      "required": ["file"],
+      "required": ["file", "block"],
       "properties": {
         "file": {
           "type": "string",
@@ -31,8 +32,7 @@
         },
         "block": {
           "type": "boolean",
-          "description": "Whether the down migration is blocked",
-          "default": false
+          "description": "Whether the down migration is blocked"
         },
         "block_reason": {
           "type": "string",
