@@ -39,6 +39,11 @@ type Configuration struct {
 	Meta map[string]interface{} `yaml:"meta"`
 }
 
+type LintConfiguration struct {
+	ProjectDir     string
+	MaxSQLFileSize int64
+}
+
 const (
 	MaxNameLength = 255
 
@@ -66,8 +71,8 @@ func Create(projectDir string, name string, time time.Time) (CreateSourceResult,
 	return create(projectDir, name, time)
 }
 
-func Lint(projectDir string, report *LintReport) error {
-	return lint(projectDir, report)
+func Lint(conf LintConfiguration, report *LintReport) error {
+	return lint(conf, report)
 }
 
 func Scan(projectDir string, callback func(id MigrationID, name string) bool) error {

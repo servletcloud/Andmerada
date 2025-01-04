@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/dustin/go-humanize"
+	"github.com/dustin/go-humanize/english"
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/resources"
 	"github.com/servletcloud/Andmerada/internal/source"
@@ -31,8 +33,12 @@ func lintCommand() *cobra.Command {
 
 			log.Println("Validating the migration files, please, wait...")
 
+			config := source.LintConfiguration{
+				ProjectDir:     currentDir,
+				MaxSQLFileSize: 1 * humanize.MiByte,
+			}
 			report := source.LintReport{}
-			if err := source.Lint(currentDir, &report); err != nil {
+			if err := source.Lint(config, &report); err != nil {
 				log.Panic(err)
 			}
 
@@ -55,10 +61,8 @@ func printLintReport(report *source.LintReport) {
 	criticalCount := len(report.Errors)
 	warningCount := len(report.Warings)
 
-	log.Println("Lint Report:")
-
 	if criticalCount > 0 {
-		log.Printf("%d Critical Errors:\n", criticalCount)
+		log.Println("Critical Errors:")
 
 		sortLintErrorsByIDAsc(report.Errors)
 
@@ -68,7 +72,7 @@ func printLintReport(report *source.LintReport) {
 	}
 
 	if warningCount > 0 {
-		log.Printf("%d Warnings:\n", warningCount)
+		log.Println("Warnings:")
 
 		sortLintErrorsByIDAsc(report.Warings)
 
@@ -88,20 +92,14 @@ func printLintError(err source.LintError) {
 	log.Printf("  - %s\n", err.Title)
 
 	if len(err.Details) > 0 {
-		log.Printf("    Details: %s\n", err.Details)
+		log.Printf("    %s\n", err.Details)
 	}
 
 	if len(err.Files) > 0 {
-		skip := false
-
-		if len(err.Files) == 1 {
-			file := err.Files[0]
-			skip = strings.Contains(err.Details, file) || strings.Contains(err.Title, file)
-		}
-
-		if !skip {
-			log.Printf("    Affected Files: %s\n", err.Files)
-		}
+		log.Printf("    Affected %v: %v",
+			english.PluralWord(len(err.Files), "file", "files"),
+			english.WordSeries(err.Files, "and"),
+		)
 	}
 
 	log.Println()
