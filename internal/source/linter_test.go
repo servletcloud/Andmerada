@@ -3,6 +3,8 @@ package source_test
 import (
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -104,6 +106,15 @@ func TestLint(t *testing.T) { //nolint:funlen
 			assert.Empty(t, report.Errors)
 			assert.Empty(t, report.Warings)
 		})
+
+		t.Run("duplicate migration ID", func(t *testing.T) {
+			dupeFolderPath := filepath.Join(dir, "20241225112129_duplicate_migration")
+			require.NoError(t, os.Mkdir(dupeFolderPath, osutil.DirPerm0755))
+
+			report := runLint(dir)
+
+			assertHasError(t, report, "Duplicate migration ID")
+		})
 	})
 }
 
@@ -124,10 +135,11 @@ func createTempMigration(t *testing.T, dir string, timestamp time.Time) string {
 func assertHasError(t *testing.T, report *source.LintReport, expectedTitle string) {
 	t.Helper()
 
-	require.Len(t, report.Errors, 1)
+	found := slices.ContainsFunc(report.Errors, func(lintError source.LintError) bool {
+		return strings.Contains(lintError.Title, expectedTitle)
+	})
 
-	lintError := report.Errors[0]
-	assert.Contains(t, lintError.Title, expectedTitle)
+	assert.True(t, found, "No errors contain title: %v", expectedTitle)
 }
 
 func runLint(dir string) *source.LintReport {

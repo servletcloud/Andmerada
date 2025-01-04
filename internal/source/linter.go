@@ -2,6 +2,7 @@ package source
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -12,8 +13,11 @@ import (
 
 func lint(projectDir string, report *LintReport) error {
 	configurations := make([]Configuration, 0)
+	idToName := make(map[MigrationID][]string)
 
-	err := scan(projectDir, func(_ MigrationID, name string) bool {
+	err := scan(projectDir, func(id MigrationID, name string) bool {
+		idToName[id] = append(idToName[id], name)
+
 		migrationYmlPath := filepath.Join(name, MigrationYmlFilename)
 		configuration, ok := loadConfiguration(projectDir, migrationYmlPath, report)
 
@@ -39,6 +43,8 @@ func lint(projectDir string, report *LintReport) error {
 	if err != nil {
 		return err
 	}
+
+	detectDuplicateIDs(idToName, report)
 
 	return nil
 }
@@ -79,10 +85,26 @@ func resolveSQLFile(dir string, relative string, report *LintReport) bool {
 	}
 
 	if stat.IsDir() {
-		report.AddError(relative, "Must be a file, but is a directory", "")
+		report.AddError(relative, "Must be a file but is a directory", "")
 
 		return false
 	}
 
 	return true
+}
+
+func detectDuplicateIDs(idToNames map[MigrationID][]string, report *LintReport) {
+	for id, names := range idToNames { //nolint:varnamelen
+		if len(names) <= 1 {
+			continue
+		}
+
+		err := LintError{
+			Files:   names,
+			Title:   fmt.Sprintf("Duplicate migration ID: %v", id),
+			Details: "Ensure each migration has a unique timestamp-based ID.",
+		}
+
+		report.Errors = append(report.Errors, err)
+	}
 }
