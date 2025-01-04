@@ -5,10 +5,10 @@
 name: "{{name}}"
 
 up:
-  file: ./up.sql
+  file: up.sql
 
 down:
-  file: ./down.sql
+  file: down.sql
   block: false
   block_reason: "This migration contains irreversible changes."
 

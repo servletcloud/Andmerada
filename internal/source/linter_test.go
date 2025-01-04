@@ -8,12 +8,15 @@ import (
 
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/project"
+	"github.com/servletcloud/Andmerada/internal/schema"
 	"github.com/servletcloud/Andmerada/internal/source"
+	"github.com/servletcloud/Andmerada/internal/ymlutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
-func TestLint(t *testing.T) {
+func TestLint(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	timestamp, err := time.Parse("20060102150405", "20241225112129")
@@ -44,7 +47,7 @@ func TestLint(t *testing.T) {
 
 			report := runLint(dir)
 
-			assertHasError(t, report, "Migration file does not exist")
+			assertHasError(t, report, "File does not exist")
 		})
 
 		t.Run("migration.yml violates the schema", func(t *testing.T) {
@@ -65,6 +68,41 @@ func TestLint(t *testing.T) {
 			report := runLint(dir)
 
 			assertHasError(t, report, "Invalid YAM")
+		})
+
+		t.Run("up.sql is missing", func(t *testing.T) {
+			migrationDir := createTempMigration(t, dir, timestamp2)
+			path := filepath.Join(dir, migrationDir, "up.sql")
+			require.NoError(t, os.Remove(path))
+
+			report := runLint(dir)
+
+			assertHasError(t, report, "File referenced by migration.yml does not exist")
+		})
+
+		t.Run("down.sql is missing", func(t *testing.T) {
+			migrationDir := createTempMigration(t, dir, timestamp2)
+			path := filepath.Join(dir, migrationDir, "down.sql")
+			require.NoError(t, os.Remove(path))
+
+			report := runLint(dir)
+
+			assertHasError(t, report, "File referenced by migration.yml does not exist")
+		})
+
+		t.Run("down.sql is missing with down.block=true", func(t *testing.T) {
+			migrationDir := createTempMigration(t, dir, timestamp2)
+			path := filepath.Join(dir, migrationDir, "down.sql")
+			require.NoError(t, os.Remove(path))
+
+			updateConfig(t, filepath.Join(dir, migrationDir, "migration.yml"), func(conf *source.Configuration) {
+				conf.Down.Block = true
+			})
+
+			report := runLint(dir)
+
+			assert.Empty(t, report.Errors)
+			assert.Empty(t, report.Warings)
 		})
 	})
 }
@@ -100,4 +138,21 @@ func runLint(dir string) *source.LintReport {
 	}
 
 	return report
+}
+
+func updateConfig(t *testing.T, path string, callback func(config *source.Configuration)) {
+	t.Helper()
+
+	configuration := new(source.Configuration)
+
+	err := ymlutil.LoadFromFile(path, schema.GetMigrationSchema(), configuration)
+	require.NoError(t, err)
+
+	callback(configuration)
+
+	toUpdate, err := yaml.Marshal(configuration)
+	require.NoError(t, err)
+
+	err = os.WriteFile(path, toUpdate, osutil.FilePerm0644)
+	require.NoError(t, err)
 }
