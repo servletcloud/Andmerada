@@ -28,13 +28,13 @@ type Configuration struct {
 
 	Up struct {
 		File string `yaml:"file"`
-	}
+	} `yaml:"up"`
 
 	Down struct {
 		File        string `yaml:"file"`
 		Block       bool   `yaml:"block"`
 		BlockReason string `yaml:"block_reason"` //nolint:tagliatelle
-	}
+	} `yaml:"down"`
 
 	Meta map[string]interface{} `yaml:"meta"`
 }
@@ -72,4 +72,12 @@ func Lint(projectDir string, report *LintReport) error {
 
 func Scan(projectDir string, callback func(id MigrationID, name string) bool) error {
 	return scan(projectDir, callback)
+}
+
+func (report *LintReport) AddError(file, title, details string) {
+	report.Errors = append(report.Errors, LintError{
+		Title:   title,
+		Files:   []string{file},
+		Details: details,
+	})
 }

@@ -24,7 +24,7 @@
     "down": {
       "type": "object",
       "description": "Configuration for the down migration",
-      "required": ["file", "block"],
+      "required": ["block"],
       "properties": {
         "file": {
           "type": "string",
@@ -40,7 +40,17 @@
           "maxLength": 255,
           "default": "This migration contains irreversible changes."
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "block": { "const": false } }
+          },
+          "then": {
+            "required": ["file"]
+          }
+        }
+      ]
     },
     "meta": {
       "type": "object",

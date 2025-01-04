@@ -2,7 +2,6 @@ package source
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -15,14 +14,24 @@ func lint(projectDir string, report *LintReport) error {
 	configurations := make([]Configuration, 0)
 
 	err := scan(projectDir, func(_ MigrationID, name string) bool {
-		relativePath := filepath.Join(name, MigrationYmlFilename)
-		configuration, err := loadConfiguration(filepath.Join(projectDir, relativePath))
+		migrationYmlPath := filepath.Join(name, MigrationYmlFilename)
+		configuration, ok := loadConfiguration(projectDir, migrationYmlPath, report)
 
-		if err == nil {
-			configurations = append(configurations, configuration)
-		} else {
-			report.Errors = append(report.Errors, configurationErrorToLint(relativePath, err))
+		if !ok {
+			return true
 		}
+
+		upSQLExists := resolveSQLFile(projectDir, filepath.Join(name, configuration.Up.File), report)
+
+		if !configuration.Down.Block {
+			resolveSQLFile(projectDir, filepath.Join(name, configuration.Down.File), report)
+		}
+
+		if !upSQLExists {
+			return true
+		}
+
+		configurations = append(configurations, configuration)
 
 		return true
 	})
@@ -34,27 +43,46 @@ func lint(projectDir string, report *LintReport) error {
 	return nil
 }
 
-func loadConfiguration(path string) (Configuration, error) {
+func loadConfiguration(dir string, relative string, report *LintReport) (Configuration, bool) {
 	var configuration Configuration
 
-	err := ymlutil.LoadFromFile(path, schema.GetMigrationSchema(), &configuration)
+	path := filepath.Join(dir, relative)
 
-	// Intentionally avoid wrapping errors to ensure clean and actionable messages in lint output.
-	return configuration, err //nolint:wrapcheck
-}
+	if err := ymlutil.LoadFromFile(path, schema.GetMigrationSchema(), &configuration); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			report.AddError(relative, "File does not exist", "")
+		} else if errors.Is(err, ymlutil.ErrSchemaValidation) {
+			report.AddError(relative, "Schema validation failed", err.Error())
+		} else if yamlError := new(yaml.TypeError); errors.As(err, &yamlError) {
+			report.AddError(relative, "Invalid YAML", err.Error())
+		} else {
+			report.AddError(relative, "Failed to read, parse, or validate the migration file", err.Error())
+		}
 
-func configurationErrorToLint(file string, err error) LintError {
-	title := "Failed to read, parse, or validate the migration file"
-	details := err.Error()
-
-	if errors.Is(err, os.ErrNotExist) {
-		title = fmt.Sprintf("Migration file does not exist: %q", file)
-		details = ""
-	} else if errors.Is(err, ymlutil.ErrSchemaValidation) {
-		title = "Schema validation failed"
-	} else if yamlError := new(yaml.TypeError); errors.As(err, &yamlError) {
-		title = "Invalid YAML"
+		return configuration, false
 	}
 
-	return LintError{Files: []string{file}, Title: title, Details: details}
+	return configuration, true
+}
+
+func resolveSQLFile(dir string, relative string, report *LintReport) bool {
+	stat, err := os.Stat(filepath.Join(dir, relative))
+
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			report.AddError(relative, "File referenced by migration.yml does not exist", "")
+		} else {
+			report.AddError(relative, "File referenced by migration.yml cannot be read", err.Error())
+		}
+
+		return false
+	}
+
+	if stat.IsDir() {
+		report.AddError(relative, "Must be a file, but is a directory", "")
+
+		return false
+	}
+
+	return true
 }
