@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dustin/go-humanize"
 	"github.com/servletcloud/Andmerada/internal/schema"
 	"github.com/servletcloud/Andmerada/internal/ymlutil"
 	"gopkg.in/yaml.v3"
 )
 
-func lint(projectDir string, report *LintReport) error {
+func lint(conf LintConfiguration, report *LintReport) error {
+	projectDir := conf.ProjectDir
 	configurations := make([]Configuration, 0)
 	idToName := make(map[MigrationID][]string)
 
@@ -25,10 +27,10 @@ func lint(projectDir string, report *LintReport) error {
 			return true
 		}
 
-		upSQLExists := resolveSQLFile(projectDir, filepath.Join(name, configuration.Up.File), report)
+		upSQLExists := resolveSQLFile(conf, filepath.Join(name, configuration.Up.File), report)
 
 		if !configuration.Down.Block {
-			resolveSQLFile(projectDir, filepath.Join(name, configuration.Down.File), report)
+			resolveSQLFile(conf, filepath.Join(name, configuration.Down.File), report)
 		}
 
 		if !upSQLExists {
@@ -71,7 +73,8 @@ func loadConfiguration(dir string, relative string, report *LintReport) (Configu
 	return configuration, true
 }
 
-func resolveSQLFile(dir string, relative string, report *LintReport) bool {
+func resolveSQLFile(conf LintConfiguration, relative string, report *LintReport) bool {
+	dir := conf.ProjectDir
 	stat, err := os.Stat(filepath.Join(dir, relative))
 
 	if err != nil {
@@ -88,6 +91,17 @@ func resolveSQLFile(dir string, relative string, report *LintReport) bool {
 		report.AddError(relative, "Must be a file but is a directory", "")
 
 		return false
+	}
+
+	size := stat.Size()
+	errorThreshold := conf.MaxSQLFileSize
+
+	if size > errorThreshold {
+		title := fmt.Sprintf("File is too big: %v exceeds the limit of %v",
+			humanize.Bytes(uint64(size)),           //nolint:gosec
+			humanize.Bytes(uint64(errorThreshold)), //nolint:gosec
+		)
+		report.AddError(relative, title, "")
 	}
 
 	return true
