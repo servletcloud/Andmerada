@@ -5,6 +5,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/dustin/go-humanize/english"
@@ -36,6 +37,7 @@ func lintCommand() *cobra.Command {
 			config := source.LintConfiguration{
 				ProjectDir:     currentDir,
 				MaxSQLFileSize: 1 * humanize.MiByte,
+				NowUTC:         time.Now().UTC(),
 			}
 			report := source.LintReport{}
 			if err := source.Lint(config, &report); err != nil {
