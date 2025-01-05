@@ -14,11 +14,17 @@ import (
 
 func lint(conf LintConfiguration, report *LintReport) error {
 	projectDir := conf.ProjectDir
+	nowTimeID := newIDFromTime(conf.NowUTC)
 	configurations := make([]Configuration, 0)
 	idToName := make(map[MigrationID][]string)
+	sourcesInFuture := make([]string, 0)
 
 	err := scan(projectDir, func(id MigrationID, name string) bool {
 		idToName[id] = append(idToName[id], name)
+
+		if id > nowTimeID {
+			sourcesInFuture = append(sourcesInFuture, name)
+		}
 
 		migrationYmlPath := filepath.Join(name, MigrationYmlFilename)
 		configuration, ok := loadConfiguration(projectDir, migrationYmlPath, report)
@@ -47,6 +53,14 @@ func lint(conf LintConfiguration, report *LintReport) error {
 	}
 
 	detectDuplicateIDs(idToName, report)
+
+	if len(sourcesInFuture) > 0 {
+		report.AddWarning(
+			sourcesInFuture,
+			"There are migrations with timestamps in the future",
+			"These migrations are pending unless already applied, regardless of their timestamps",
+		)
+	}
 
 	return nil
 }

@@ -38,7 +38,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 		_, err := source.Create(dir, "Create users table", timestamp)
 		require.NoError(t, err)
 
-		report := runLint(dir, 1*humanize.KiByte)
+		report := runLint(dir, nil)
 
 		assert.Empty(t, report.Errors)
 		assert.Empty(t, report.Warings)
@@ -48,7 +48,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 			path := filepath.Join(dir, migrationDir, "migration.yml")
 			require.NoError(t, os.Remove(path))
 
-			report := runLint(dir, 1*humanize.KiByte)
+			report := runLint(dir, nil)
 
 			assertHasError(t, report, "File does not exist")
 		})
@@ -58,7 +58,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 			path := filepath.Join(dir, migrationDir, "migration.yml")
 			require.NoError(t, os.WriteFile(path, []byte("---"), osutil.FilePerm0644))
 
-			report := runLint(dir, 1*humanize.KiByte)
+			report := runLint(dir, nil)
 
 			assertHasError(t, report, "Schema validation failed")
 		})
@@ -68,7 +68,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 			path := filepath.Join(dir, migrationDir, "migration.yml")
 			require.NoError(t, os.WriteFile(path, []byte("bad yaml"), osutil.FilePerm0644))
 
-			report := runLint(dir, 1*humanize.KiByte)
+			report := runLint(dir, nil)
 
 			assertHasError(t, report, "Invalid YAM")
 		})
@@ -78,7 +78,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 			path := filepath.Join(dir, migrationDir, "up.sql")
 			require.NoError(t, os.Remove(path))
 
-			report := runLint(dir, 1*humanize.KiByte)
+			report := runLint(dir, nil)
 
 			assertHasError(t, report, "File referenced by migration.yml does not exist")
 		})
@@ -88,7 +88,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 			path := filepath.Join(dir, migrationDir, "down.sql")
 			require.NoError(t, os.Remove(path))
 
-			report := runLint(dir, 1*humanize.KiByte)
+			report := runLint(dir, nil)
 
 			assertHasError(t, report, "File referenced by migration.yml does not exist")
 		})
@@ -102,7 +102,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 				conf.Down.Block = true
 			})
 
-			report := runLint(dir, 1*humanize.KiByte)
+			report := runLint(dir, nil)
 
 			assert.Empty(t, report.Errors)
 			assert.Empty(t, report.Warings)
@@ -116,7 +116,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 				require.NoError(t, os.RemoveAll(dupeFolderPath))
 			})
 
-			report := runLint(dir, 1*humanize.KiByte)
+			report := runLint(dir, nil)
 
 			assertHasError(t, report, "Duplicate migration ID")
 		})
@@ -128,9 +128,19 @@ func TestLint(t *testing.T) { //nolint:funlen
 			stat, err := os.Stat(path)
 			require.NoError(t, err)
 
-			report := runLint(dir, stat.Size()-1)
+			lintConfig := &source.LintConfiguration{MaxSQLFileSize: stat.Size() - 1} //nolint:exhaustruct
+			report := runLint(dir, lintConfig)
 
 			assertHasError(t, report, "File is too big:")
+		})
+
+		t.Run("warning if there are migrations in the future", func(t *testing.T) {
+			_ = createTempMigration(t, dir, timestamp2)
+
+			lintConfig := &source.LintConfiguration{NowUTC: timestamp.Add(-1 * time.Second)} //nolint:exhaustruct
+			report := runLint(dir, lintConfig)
+
+			assertHasError(t, report, "There are migrations with timestamps in the future")
 		})
 	})
 }
@@ -159,11 +169,18 @@ func assertHasError(t *testing.T, report *source.LintReport, expectedTitle strin
 	assert.True(t, found, "No errors contain title: %v", expectedTitle)
 }
 
-func runLint(dir string, maxSQLSize int64) *source.LintReport {
+func runLint(dir string, configOverride *source.LintConfiguration) *source.LintReport {
 	config := source.LintConfiguration{
 		ProjectDir:     dir,
-		MaxSQLFileSize: maxSQLSize,
+		MaxSQLFileSize: 1 * humanize.KiByte,
+		NowUTC:         time.Now(),
 	}
+
+	if configOverride != nil {
+		config.MaxSQLFileSize = configOverride.MaxSQLFileSize
+		config.NowUTC = configOverride.NowUTC
+	}
+
 	report := new(source.LintReport)
 
 	if err := source.Lint(config, report); err != nil {

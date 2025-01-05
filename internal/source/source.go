@@ -42,6 +42,7 @@ type Configuration struct {
 type LintConfiguration struct {
 	ProjectDir     string
 	MaxSQLFileSize int64
+	NowUTC         time.Time
 }
 
 const (
@@ -83,6 +84,14 @@ func (report *LintReport) AddError(file, title, details string) {
 	report.Errors = append(report.Errors, LintError{
 		Title:   title,
 		Files:   []string{file},
+		Details: details,
+	})
+}
+
+func (report *LintReport) AddWarning(files []string, title, details string) {
+	report.Errors = append(report.Errors, LintError{
+		Title:   title,
+		Files:   files,
 		Details: details,
 	})
 }
