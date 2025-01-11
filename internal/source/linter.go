@@ -1,138 +1,88 @@
 package source
 
 import (
-	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
-	"github.com/dustin/go-humanize"
-	"github.com/servletcloud/Andmerada/internal/schema"
-	"github.com/servletcloud/Andmerada/internal/ymlutil"
-	"gopkg.in/yaml.v3"
+	"github.com/servletcloud/Andmerada/internal/source/linters"
 )
 
-func lint(conf LintConfiguration, report *LintReport) error {
-	projectDir := conf.ProjectDir
-	nowTimeID := newIDFromTime(conf.NowUTC)
-	configurations := make([]Configuration, 0)
-	idToName := make(map[MigrationID][]string)
-	sourcesInFuture := make([]string, 0)
+type linter struct {
+	LintConfiguration
+	report *LintReport
+}
 
-	err := scan(projectDir, func(id MigrationID, name string) bool {
-		idToName[id] = append(idToName[id], name)
+func (linter *linter) lint() error {
+	duplicatesLinter := linters.NewDupeLinter(linter)
+	defer duplicatesLinter.Report()
 
-		if id > nowTimeID {
-			sourcesInFuture = append(sourcesInFuture, name)
+	futureLinter := linter.newFutureLinter()
+	defer futureLinter.Report()
+
+	countLinter := &linters.CountLinter{Reporter: linter}
+	defer countLinter.Report()
+
+	configurationLinter := &linters.ConfigLinter{Reporter: linter, ProjectDir: linter.ProjectDir}
+	upSQLLinter := linter.newUpSQLLinter()
+	downSQLLinter := linter.newDownSQLLinter()
+
+	return scanAll(linter.ProjectDir, func(id MigrationID, name string) {
+		duplicatesLinter.LintSource(id.asUint64(), name)
+		futureLinter.LintSource(id.asUint64(), name)
+		countLinter.LintSource()
+
+		configuration := new(Configuration)
+
+		if !configurationLinter.Lint(filepath.Join(name, MigrationYmlFilename), &configuration) {
+			return
 		}
 
-		migrationYmlPath := filepath.Join(name, MigrationYmlFilename)
-		configuration, ok := loadConfiguration(projectDir, migrationYmlPath, report)
-
-		if !ok {
-			return true
-		}
-
-		upSQLExists := resolveSQLFile(conf, filepath.Join(name, configuration.Up.File), report)
+		upSQLLinter.Lint(filepath.Join(name, configuration.Up.File))
 
 		if !configuration.Down.Block {
-			resolveSQLFile(conf, filepath.Join(name, configuration.Down.File), report)
+			downSQLLinter.Lint(filepath.Join(name, configuration.Down.File))
 		}
-
-		if !upSQLExists {
-			return true
-		}
-
-		configurations = append(configurations, configuration)
-
-		return true
 	})
-
-	if err != nil {
-		return err
-	}
-
-	detectDuplicateIDs(idToName, report)
-
-	if len(sourcesInFuture) > 0 {
-		report.AddWarning(
-			sourcesInFuture,
-			"There are migrations with timestamps in the future",
-			"These migrations are pending unless already applied, regardless of their timestamps",
-		)
-	}
-
-	return nil
 }
 
-func loadConfiguration(dir string, relative string, report *LintReport) (Configuration, bool) {
-	var configuration Configuration
-
-	path := filepath.Join(dir, relative)
-
-	if err := ymlutil.LoadFromFile(path, schema.GetMigrationSchema(), &configuration); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			report.AddError(relative, "File does not exist", "")
-		} else if errors.Is(err, ymlutil.ErrSchemaValidation) {
-			report.AddError(relative, "Schema validation failed", err.Error())
-		} else if yamlError := new(yaml.TypeError); errors.As(err, &yamlError) {
-			report.AddError(relative, "Invalid YAML", err.Error())
-		} else {
-			report.AddError(relative, "Failed to read, parse, or validate the migration file", err.Error())
-		}
-
-		return configuration, false
+func (linter *linter) newUpSQLLinter() linters.SQLLinter {
+	return linters.SQLLinter{
+		Reporter:            linter,
+		ProjectDir:          linter.ProjectDir,
+		MaxSQLFileSize:      linter.MaxSQLFileSize,
+		CreatedFromTemplate: []byte(linter.UpSQLTemplate),
+		ErrEmptyMsg:         "Migration file appears to be empty.",
+		ErrUntouchedMsg:     "The migration file appears to be untouched since its creation.",
 	}
-
-	return configuration, true
 }
 
-func resolveSQLFile(conf LintConfiguration, relative string, report *LintReport) bool {
-	dir := conf.ProjectDir
-	stat, err := os.Stat(filepath.Join(dir, relative))
+func (linter *linter) newDownSQLLinter() linters.SQLLinter {
+	errEmptyMsg := fmt.Sprint(
+		"The migration rollback file appears to be empty. ",
+		"Consider adding a comment or marking the rollback as blocked.",
+	)
 
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			report.AddError(relative, "File referenced by migration.yml does not exist", "")
-		} else {
-			report.AddError(relative, "File referenced by migration.yml cannot be read", err.Error())
-		}
-
-		return false
+	return linters.SQLLinter{
+		Reporter:            linter,
+		ProjectDir:          linter.ProjectDir,
+		MaxSQLFileSize:      linter.MaxSQLFileSize,
+		CreatedFromTemplate: []byte(linter.DownSQLTemplate),
+		ErrEmptyMsg:         errEmptyMsg,
+		ErrUntouchedMsg:     "The migration rollback file appears to be untouched since its creation.",
 	}
-
-	if stat.IsDir() {
-		report.AddError(relative, "Must be a file but is a directory", "")
-
-		return false
-	}
-
-	size := stat.Size()
-	errorThreshold := conf.MaxSQLFileSize
-
-	if size > errorThreshold {
-		title := fmt.Sprintf("File is too big: %v exceeds the limit of %v",
-			humanize.Bytes(uint64(size)),           //nolint:gosec
-			humanize.Bytes(uint64(errorThreshold)), //nolint:gosec
-		)
-		report.AddError(relative, title, "")
-	}
-
-	return true
 }
 
-func detectDuplicateIDs(idToNames map[MigrationID][]string, report *LintReport) {
-	for id, names := range idToNames { //nolint:varnamelen
-		if len(names) <= 1 {
-			continue
-		}
-
-		err := LintError{
-			Files:   names,
-			Title:   fmt.Sprintf("Duplicate migration ID: %v", id),
-			Details: "Ensure each migration has a unique timestamp-based ID.",
-		}
-
-		report.Errors = append(report.Errors, err)
+func (linter *linter) newFutureLinter() *linters.FutureLinter {
+	return &linters.FutureLinter{
+		Reporter:  linter,
+		Threshold: newIDFromTime(linter.NowUTC).asUint64(),
 	}
+}
+
+func (linter *linter) AddError(title string, files ...string) {
+	linter.report.Errors = append(linter.report.Errors, LintError{Title: title, Files: files})
+}
+
+func (linter *linter) AddWarning(title string, files ...string) {
+	linter.report.Warings = append(linter.report.Warings, LintError{Title: title, Files: files})
 }

@@ -5,6 +5,14 @@ import (
 	"os"
 )
 
+func scanAll(projectDir string, callback func(id MigrationID, name string)) error {
+	return scan(projectDir, func(id MigrationID, name string) bool {
+		callback(id, name)
+
+		return true
+	})
+}
+
 func scan(projectDir string, callback func(id MigrationID, name string) bool) error {
 	entries, err := os.ReadDir(projectDir)
 	if err != nil {

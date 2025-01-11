@@ -11,6 +11,10 @@ const (
 	idFormatTimeYYYYMMDDHHMMSS = "20060102150405"
 )
 
+func (id MigrationID) asUint64() uint64 {
+	return uint64(id)
+}
+
 func newIDFromTime(t time.Time) MigrationID {
 	timestamp := t.Format(idFormatTimeYYYYMMDDHHMMSS)
 

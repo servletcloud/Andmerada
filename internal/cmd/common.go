@@ -26,8 +26,8 @@ func mustLoadProject(dir string) project.Project {
 		log.Fatalf("Project is not initialized. Initialize with `andmerada init %v`", dir)
 	}
 
-	if errors.Is(err, ymlutil.ErrSchemaValidation) {
-		log.Fatalf("Schema validation failed for andmerada.yml: %v", err)
+	if schemaError := new(ymlutil.ValidationError); errors.As(err, &schemaError) {
+		log.Fatalf("Schema validation failed for andmerada.yml:\n%v", schemaError.Details())
 	}
 
 	var yamlError *yaml.TypeError

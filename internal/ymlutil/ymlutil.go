@@ -1,16 +1,35 @@
 package ymlutil
 
 import (
-	"errors"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v3"
 )
 
-var (
-	ErrSchemaValidation = errors.New("cannot validate schema")
-)
+type ValidationError struct {
+	validationResult *gojsonschema.Result
+}
+
+func (e *ValidationError) Error() string {
+	return fmt.Sprintln("YML validation failed. Details:", e.Details())
+}
+
+func (e *ValidationError) Details() string {
+	var stringBuilder strings.Builder
+
+	for _, desc := range e.validationResult.Errors() {
+		stringBuilder.WriteString(fmt.Sprintf("- %s\n", desc.String()))
+	}
+
+	return strings.TrimSpace(stringBuilder.String())
+}
+
+func NewValidationError(result *gojsonschema.Result) *ValidationError {
+	return &ValidationError{validationResult: result}
+}
 
 func LoadFromFile(path string, schema string, out interface{}) error {
 	content, err := os.ReadFile(path)
@@ -28,11 +47,7 @@ func LoadFromFile(path string, schema string, out interface{}) error {
 	}
 
 	if !result.Valid() {
-		return fmt.Errorf("cannot validate schema in %q because %v: %w",
-			path,
-			fmtValidationErrors(result),
-			ErrSchemaValidation,
-		)
+		return fmt.Errorf("cannot validate schema in %q : %w", path, NewValidationError(result))
 	}
 
 	return nil
