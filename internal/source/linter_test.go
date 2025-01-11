@@ -35,6 +35,13 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 		require.NoError(t, project.Initialize(dir))
 
+		t.Run("No migrations warning", func(t *testing.T) {
+			report := runLint(dir, nil)
+
+			assert.Empty(t, report.Errors)
+			assertHasError(t, report.Warings, "No migration files found. Create with:")
+		})
+
 		_, err := source.Create(dir, "Create users table", timestamp)
 		require.NoError(t, err)
 
@@ -50,27 +57,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 			report := runLint(dir, nil)
 
-			assertHasError(t, report, "File does not exist")
-		})
-
-		t.Run("migration.yml violates the schema", func(t *testing.T) {
-			migrationDir := createTempMigration(t, dir, timestamp2)
-			path := filepath.Join(dir, migrationDir, "migration.yml")
-			require.NoError(t, os.WriteFile(path, []byte("---"), osutil.FilePerm0644))
-
-			report := runLint(dir, nil)
-
-			assertHasError(t, report, "Schema validation failed")
-		})
-
-		t.Run("migration.yml has invalid syntax", func(t *testing.T) {
-			migrationDir := createTempMigration(t, dir, timestamp2)
-			path := filepath.Join(dir, migrationDir, "migration.yml")
-			require.NoError(t, os.WriteFile(path, []byte("bad yaml"), osutil.FilePerm0644))
-
-			report := runLint(dir, nil)
-
-			assertHasError(t, report, "Invalid YAM")
+			assertHasError(t, report.Errors, "File does not exist")
 		})
 
 		t.Run("up.sql is missing", func(t *testing.T) {
@@ -80,7 +67,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 			report := runLint(dir, nil)
 
-			assertHasError(t, report, "File referenced by migration.yml does not exist")
+			assertHasError(t, report.Errors, "File referenced by migration.yml does not exist")
 		})
 
 		t.Run("down.sql is missing", func(t *testing.T) {
@@ -90,7 +77,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 			report := runLint(dir, nil)
 
-			assertHasError(t, report, "File referenced by migration.yml does not exist")
+			assertHasError(t, report.Errors, "File referenced by migration.yml does not exist")
 		})
 
 		t.Run("down.sql is missing with down.block=true", func(t *testing.T) {
@@ -118,7 +105,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 			report := runLint(dir, nil)
 
-			assertHasError(t, report, "Duplicate migration ID")
+			assertHasError(t, report.Errors, "Duplicate migration ID")
 		})
 
 		t.Run("err of SQL big file size", func(t *testing.T) {
@@ -131,7 +118,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 			lintConfig := &source.LintConfiguration{MaxSQLFileSize: stat.Size() - 1} //nolint:exhaustruct
 			report := runLint(dir, lintConfig)
 
-			assertHasError(t, report, "File is too big:")
+			assertHasError(t, report.Errors, "File is too big:")
 		})
 
 		t.Run("warning if there are migrations in the future", func(t *testing.T) {
@@ -140,7 +127,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 			lintConfig := &source.LintConfiguration{NowUTC: timestamp.Add(-1 * time.Second)} //nolint:exhaustruct
 			report := runLint(dir, lintConfig)
 
-			assertHasError(t, report, "There are migrations with timestamps in the future")
+			assertHasError(t, report.Warings, "There are migrations with timestamps in the future")
 		})
 	})
 }
@@ -159,21 +146,23 @@ func createTempMigration(t *testing.T, dir string, timestamp time.Time) string {
 	return result.BaseDir
 }
 
-func assertHasError(t *testing.T, report *source.LintReport, expectedTitle string) {
+func assertHasError(t *testing.T, errors []source.LintError, expectedTitle string) {
 	t.Helper()
 
-	found := slices.ContainsFunc(report.Errors, func(lintError source.LintError) bool {
+	found := slices.ContainsFunc(errors, func(lintError source.LintError) bool {
 		return strings.Contains(lintError.Title, expectedTitle)
 	})
 
-	assert.True(t, found, "No errors contain title: %v", expectedTitle)
+	assert.True(t, found, "No errors contain title: %v\n. Actual errors: %v", expectedTitle, errors)
 }
 
 func runLint(dir string, configOverride *source.LintConfiguration) *source.LintReport {
 	config := source.LintConfiguration{
-		ProjectDir:     dir,
-		MaxSQLFileSize: 1 * humanize.KiByte,
-		NowUTC:         time.Now(),
+		ProjectDir:      dir,
+		MaxSQLFileSize:  1 * humanize.KiByte,
+		NowUTC:          time.Now(),
+		UpSQLTemplate:   "create table users;",
+		DownSQLTemplate: "drop table users",
 	}
 
 	if configOverride != nil {

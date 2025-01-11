@@ -3,7 +3,6 @@ package ymlutil
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v3"
@@ -25,22 +24,6 @@ func validate(yml []byte, schema string) (*gojsonschema.Result, error) {
 	}
 
 	return result, nil
-}
-
-func fmtValidationErrors(result *gojsonschema.Result) string {
-	if result.Valid() {
-		return "No validation errors."
-	}
-
-	var stringBuilder strings.Builder
-
-	stringBuilder.WriteString("Validation failed with the following errors:\n")
-
-	for _, desc := range result.Errors() {
-		stringBuilder.WriteString(fmt.Sprintf("- %s\n", desc.String()))
-	}
-
-	return stringBuilder.String()
 }
 
 func ymlToJSON(yml []byte) ([]byte, error) {

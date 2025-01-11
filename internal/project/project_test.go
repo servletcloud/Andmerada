@@ -103,6 +103,8 @@ func TestLoad(t *testing.T) {
 
 		_, err := project.Load(projectDir)
 
-		assert.ErrorIs(t, err, ymlutil.ErrSchemaValidation)
+		var validationError *ymlutil.ValidationError
+
+		assert.ErrorAs(t, err, &validationError)
 	})
 }

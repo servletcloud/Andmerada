@@ -22,8 +22,7 @@ const (
 func lintCommand() *cobra.Command {
 	description := resources.LoadLintCommandDescription()
 
-	//nolint:exhaustruct
-	return &cobra.Command{
+	return &cobra.Command{ //nolint:exhaustruct
 		Use:   description.Use,
 		Short: description.Short,
 		Long:  description.Long,
@@ -33,18 +32,21 @@ func lintCommand() *cobra.Command {
 			ensureProjectInitialized(currentDir)
 
 			log.Println("Validating the migration files, please, wait...")
+			log.Println()
 
 			config := source.LintConfiguration{
-				ProjectDir:     currentDir,
-				MaxSQLFileSize: 1 * humanize.MiByte,
-				NowUTC:         time.Now().UTC(),
+				ProjectDir:      currentDir,
+				MaxSQLFileSize:  1 * humanize.MiByte,
+				NowUTC:          time.Now().UTC(),
+				UpSQLTemplate:   resources.TemplateUpSQL(),
+				DownSQLTemplate: resources.TemplateDownSQL(),
 			}
-			report := source.LintReport{}
-			if err := source.Lint(config, &report); err != nil {
+			report := new(source.LintReport)
+			if err := source.Lint(config, report); err != nil {
 				log.Panic(err)
 			}
 
-			printLintReport(&report)
+			printLintReport(report)
 
 			if len(report.Errors) > 0 {
 				os.Exit(exitCodeLintErrors)
@@ -54,7 +56,7 @@ func lintCommand() *cobra.Command {
 }
 
 func printLintReport(report *source.LintReport) {
-	if len(report.Errors) == 0 {
+	if len(report.Errors) == 0 && len(report.Warings) == 0 {
 		log.Println("✔️ All checks passed. No issues found.")
 
 		return
@@ -91,10 +93,12 @@ func printLintReport(report *source.LintReport) {
 }
 
 func printLintError(err source.LintError) {
-	log.Printf("  - %s\n", err.Title)
-
-	if len(err.Details) > 0 {
-		log.Printf("    %s\n", err.Details)
+	for i, line := range strings.Split(err.Title, "\n") {
+		if i == 0 {
+			log.Printf("  - %s\n", line)
+		} else {
+			log.Printf("    %s\n", line)
+		}
 	}
 
 	if len(err.Files) > 0 {
@@ -108,7 +112,15 @@ func printLintError(err source.LintError) {
 }
 
 func sortLintErrorsByIDAsc(errors []source.LintError) {
-	slices.SortFunc(errors, func(a, b source.LintError) int {
+	slices.SortFunc(errors, func(a, b source.LintError) int { //nolint:varnamelen
+		if len(a.Files) == 0 {
+			return 1
+		}
+
+		if len(b.Files) == 0 {
+			return -1
+		}
+
 		slices.Sort(a.Files)
 		slices.Sort(b.Files)
 

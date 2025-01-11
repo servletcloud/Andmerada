@@ -13,9 +13,8 @@ type CreateSourceResult struct {
 type MigrationID uint64
 
 type LintError struct {
-	Files   []string
-	Title   string
-	Details string
+	Title string
+	Files []string
 }
 
 type LintReport struct {
@@ -40,9 +39,11 @@ type Configuration struct {
 }
 
 type LintConfiguration struct {
-	ProjectDir     string
-	MaxSQLFileSize int64
-	NowUTC         time.Time
+	ProjectDir      string
+	MaxSQLFileSize  int64
+	NowUTC          time.Time
+	UpSQLTemplate   string
+	DownSQLTemplate string
 }
 
 const (
@@ -73,25 +74,14 @@ func Create(projectDir string, name string, time time.Time) (CreateSourceResult,
 }
 
 func Lint(conf LintConfiguration, report *LintReport) error {
-	return lint(conf, report)
+	linter := &linter{
+		LintConfiguration: conf,
+		report:            report,
+	}
+
+	return linter.lint()
 }
 
 func Scan(projectDir string, callback func(id MigrationID, name string) bool) error {
 	return scan(projectDir, callback)
-}
-
-func (report *LintReport) AddError(file, title, details string) {
-	report.Errors = append(report.Errors, LintError{
-		Title:   title,
-		Files:   []string{file},
-		Details: details,
-	})
-}
-
-func (report *LintReport) AddWarning(files []string, title, details string) {
-	report.Errors = append(report.Errors, LintError{
-		Title:   title,
-		Files:   files,
-		Details: details,
-	})
 }
