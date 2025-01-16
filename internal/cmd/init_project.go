@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 
+	"github.com/servletcloud/Andmerada/internal/cmd/descriptions"
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/project"
 	"github.com/servletcloud/Andmerada/internal/resources"
@@ -11,7 +12,7 @@ import (
 )
 
 func initProjectCommand() *cobra.Command {
-	description := resources.LoadInitCommandDescription()
+	description := descriptions.InitDescription()
 
 	//nolint:exhaustruct
 	return &cobra.Command{

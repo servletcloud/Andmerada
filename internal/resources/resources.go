@@ -5,16 +5,6 @@ import (
 	"strings"
 )
 
-type CommandDescription struct {
-	Use   string
-	Short string
-	Long  string
-}
-
-const (
-	unixNewLine = "\n"
-)
-
 //go:embed template.andmerada.yml
 var templateAndmeradaYml []byte
 
@@ -26,15 +16,6 @@ var templateUpSQL []byte
 
 //go:embed template.down.sql
 var templateDownSQL []byte
-
-//go:embed command_init_description.txt
-var commandInitDiscription []byte
-
-//go:embed command_lint_description.txt
-var commandLintDescription []byte
-
-//go:embed command_cr_m_description.txt
-var commandCrMigrationDescription []byte
 
 //go:embed msg_init_completed.txt
 var msgInitCompleted []byte
@@ -64,18 +45,6 @@ func TemplateDownSQL() string {
 	return string(templateDownSQL)
 }
 
-func LoadCrMigrationDescription() CommandDescription {
-	return loadCommandDescription(commandCrMigrationDescription)
-}
-
-func LoadInitCommandDescription() CommandDescription {
-	return loadCommandDescription(commandInitDiscription)
-}
-
-func LoadLintCommandDescription() CommandDescription {
-	return loadCommandDescription(commandLintDescription)
-}
-
 func MsgInitCompleted() string {
 	return string(msgInitCompleted)
 }
@@ -90,14 +59,4 @@ func MsgMigrationCreated(dir string) string {
 
 func MsgMigrationNotLatest() string {
 	return string(msgMigrationNotLatest)
-}
-
-func loadCommandDescription(s []byte) CommandDescription {
-	lines := strings.Split(string(s), unixNewLine)
-
-	return CommandDescription{
-		Use:   lines[0],
-		Short: lines[1],
-		Long:  strings.Join(lines[2:], unixNewLine),
-	}
 }

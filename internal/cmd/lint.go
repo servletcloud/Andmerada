@@ -9,6 +9,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/dustin/go-humanize/english"
+	"github.com/servletcloud/Andmerada/internal/cmd/descriptions"
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/resources"
 	"github.com/servletcloud/Andmerada/internal/source"
@@ -20,7 +21,7 @@ const (
 )
 
 func lintCommand() *cobra.Command {
-	description := resources.LoadLintCommandDescription()
+	description := descriptions.LintDescription()
 
 	return &cobra.Command{ //nolint:exhaustruct
 		Use:   description.Use,

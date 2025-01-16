@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/servletcloud/Andmerada/internal/cmd/descriptions"
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/resources"
 	"github.com/servletcloud/Andmerada/internal/source"
@@ -12,7 +13,7 @@ import (
 )
 
 func createMigrationCommand() *cobra.Command {
-	description := resources.LoadCrMigrationDescription()
+	description := descriptions.CrMigrationDescription()
 
 	//nolint:exhaustruct
 	return &cobra.Command{
