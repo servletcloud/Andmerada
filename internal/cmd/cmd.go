@@ -18,6 +18,7 @@ func RootCommand() *cobra.Command {
 		initProjectCommand(),
 		createMigrationCommand(),
 		lintCommand(),
+		migrateCommand(),
 	)
 
 	return rootCmd

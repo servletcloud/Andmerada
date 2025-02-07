@@ -1,0 +1,12 @@
+FROM node:23.6-slim
+
+#RUN apt update
+#RUN apt install -y libc6-dev
+
+RUN npm install -g squawk-cli@1.5.4
+
+WORKDIR /lint
+
+RUN ldd --version
+
+ENTRYPOINT ["squawk"]

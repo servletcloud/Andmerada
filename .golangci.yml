@@ -10,6 +10,7 @@ linters-settings:
     rules:
       main:
         allow:
+          - context
           - log
           - os
           - fmt
@@ -18,6 +19,8 @@ linters-settings:
           - errors
           - path/filepath
           - embed
+          - net
+          - net/url
           - time
           - strconv
           - slices
@@ -28,7 +31,10 @@ linters-settings:
           - gopkg.in/yaml.v3
           - github.com/spf13/cobra
           - github.com/dustin/go-humanize
+          - github.com/jackc/pgx/v5
           - github.com/xeipuuv/gojsonschema
+          - github.com/fergusstrange/embedded-postgres
+          - github.com/servletcloud/Andmerada/internal/migrator
           - github.com/servletcloud/Andmerada/internal/osutil
           - github.com/servletcloud/Andmerada/internal/project
           - github.com/servletcloud/Andmerada/internal/cmd

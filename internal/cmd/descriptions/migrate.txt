@@ -1,0 +1,10 @@
+migrate
+Run pending migrations on the database
+The 'andmerada migrate' command executes all pending migrations in sequence, based on their timestamps in ascending order.
+
+Note:
+- Migrations are applied strictly in ascending timestamp order, regardless of whether they are in the past or future.
+
+Exit codes:
+- 0: Success, all migrations applied.
+- 2: Critical failure, migrations not applied.

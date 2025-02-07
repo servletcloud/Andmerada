@@ -12,7 +12,7 @@ GOLANGCI_LINT_VERSION := v1.62.2
 .PHONY: all ci run build clean fmt test test-with-race lint check-fmt install-lint
 
 
-all: lint test build
+all: lint lint-yml lint-sql lint-docker test build
 ci: check-fmt lint test-with-race
 
 
@@ -30,7 +30,7 @@ run:
 build: clean
 	@echo "Building the application..."
 	@mkdir -p $(BUILD_DIR)
-	go build -o $(EXECUTABLE) $(MAIN_FILE)
+	go build -ldflags "-s -w" -o $(EXECUTABLE) $(MAIN_FILE)
 	@echo "Build complete! Executable at $(EXECUTABLE)"
 
 
@@ -60,6 +60,16 @@ lint-yml:
 	docker run --rm -v $(PWD)/internal:/data:Z cytopia/yamllint .
 
 
+lint-sql:
+	@docker build -t squawk-linter -f Dockerfile.squawk .
+	@docker run --rm -v $(PWD):/lint:Z squawk-linter internal/migrator/sqlres/*.sql
+
+
+lint-docker:
+	@docker pull docker.io/hadolint/hadolint
+	@docker run --rm -i hadolint/hadolint < Dockerfile.squawk
+
+
 test-with-race:
 	@echo "Running tests..."
 	go test -shuffle on -timeout=30s -race ./...
@@ -74,3 +84,23 @@ clean:
 	@echo "Cleaning up..."
 	@rm -rf $(BUILD_DIR)
 	@echo "Cleanup complete!"
+
+
+.PHONY: postgres
+postgres:
+	@echo "Starting PostgreSQL in a temporary container..."
+	@docker run --replace --rm -d --name andmerada-db \
+	  -e POSTGRES_USER=andmerada \
+	  -e POSTGRES_PASSWORD=andmerada \
+	  -e POSTGRES_DB=andmerada \
+	  -p 5432:5432 \
+	  postgres:16
+
+	@echo "Waiting for PostgreSQL to be ready..."
+
+	@until docker exec andmerada-db pg_isready -h localhost -U andmerada; do \
+	    sleep 3; \
+	done
+
+	@echo "✅ PostgreSQL is ready!"
+	@echo "Connect using: postgres://andmerada:andmerada@localhost:5432/andmerada?sslmode=disable"
