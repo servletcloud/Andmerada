@@ -12,7 +12,7 @@ func (linter *DupeLinter) LintSource(id uint64, name string) {
 }
 
 func (linter *DupeLinter) Report() {
-	for id, names := range linter.idToNames { //nolint:varnamelen
+	for id, names := range linter.idToNames {
 		if len(names) <= 1 {
 			continue
 		}

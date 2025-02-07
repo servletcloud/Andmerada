@@ -51,7 +51,7 @@ func createProjectConfig() project.Configuration {
 	return project.Configuration{
 		Name: "migrator_test",
 		TableNames: struct {
-			AppliedMigrations string `yaml:"applied_migrations"` //nolint:tagliatelle
+			AppliedMigrations string `yaml:"applied_migrations"`
 		}{
 			AppliedMigrations: "applied_migrations",
 		},
