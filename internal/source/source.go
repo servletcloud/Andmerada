@@ -32,7 +32,7 @@ type Configuration struct {
 	Down struct {
 		File        string `yaml:"file"`
 		Block       bool   `yaml:"block"`
-		BlockReason string `yaml:"block_reason"` //nolint:tagliatelle
+		BlockReason string `yaml:"block_reason"`
 	} `yaml:"down"`
 
 	Meta map[string]interface{} `yaml:"meta"`

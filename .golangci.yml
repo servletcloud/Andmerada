@@ -6,6 +6,16 @@ linters:
     - gofumpt
 
 linters-settings:
+  varnamelen:
+    min-name-length: 3
+    ignore-names:
+      - sb
+      - id
+      - db
+  tagliatelle:
+    case:
+      rules:
+        yaml: snake
   depguard:
     rules:
       main:

@@ -16,7 +16,7 @@ func create(projectDir string, name string, time time.Time) (CreateSourceResult,
 		return CreateSourceResult{}, ErrNameExceeds255
 	}
 
-	id := NewIDFromTime(time) //nolint:varnamelen
+	id := NewIDFromTime(time)
 	latest, err := verifyIDUnique(id, projectDir)
 
 	if err != nil {

@@ -41,7 +41,7 @@ func mustLoadProject(dir string) project.Project {
 }
 
 func prettyPrintPgErr(pgErr *pgconn.PgError, sql string) string {
-	var sb strings.Builder //nolint:varnamelen
+	var sb strings.Builder
 
 	translator := pgErrorTranslator{
 		writeString: func(message string) {
