@@ -54,8 +54,11 @@ func TestLoad(t *testing.T) {
 		project, err := project.Load(projectDir)
 		require.NoError(t, err)
 
+		configuration := project.Configuration
+
 		assert.Equal(t, projectDir, project.Dir)
-		assert.Equal(t, filepath.Base(projectDir), project.Configuration.Name)
+		assert.Equal(t, filepath.Base(projectDir), configuration.Name)
+		assert.Equal(t, "applied_migrations", configuration.TableNames.AppliedMigrations)
 	})
 
 	t.Run("returns os.ErrNotExist when project dir does not exist", func(t *testing.T) {

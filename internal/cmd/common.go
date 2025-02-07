@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/servletcloud/Andmerada/internal/project"
 	"github.com/servletcloud/Andmerada/internal/ymlutil"
 	"gopkg.in/yaml.v3"
@@ -36,4 +38,17 @@ func mustLoadProject(dir string) project.Project {
 	}
 
 	panic(fmt.Sprintf("Cannot read or parse the project: %v", err))
+}
+
+func prettyPrintPgErr(pgErr *pgconn.PgError, sql string) string {
+	var sb strings.Builder //nolint:varnamelen
+
+	translator := pgErrorTranslator{
+		writeString: func(message string) {
+			sb.WriteString(message)
+		},
+	}
+	translator.prettyPrint(pgErr, sql)
+
+	return sb.String()
 }

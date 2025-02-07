@@ -18,6 +18,9 @@ var lintRaw []byte
 //go:embed create_migration.txt
 var crMigrationRaw []byte
 
+//go:embed migrate.txt
+var migrateRaw []byte
+
 type CommandDescription struct {
 	Use   string
 	Short string
@@ -34,6 +37,10 @@ func CrMigrationDescription() CommandDescription {
 
 func LintDescription() CommandDescription {
 	return loadCommandDescription(lintRaw)
+}
+
+func MigrateDescription() CommandDescription {
+	return loadCommandDescription(migrateRaw)
 }
 
 func loadCommandDescription(s []byte) CommandDescription {

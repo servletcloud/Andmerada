@@ -14,6 +14,10 @@ type Project struct {
 
 type Configuration struct {
 	Name string `yaml:"name"`
+
+	TableNames struct {
+		AppliedMigrations string `yaml:"applied_migrations"` //nolint:tagliatelle
+	} `yaml:"table_names"` //nolint:tagliatelle
 }
 
 var (
