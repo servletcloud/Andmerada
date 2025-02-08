@@ -20,6 +20,8 @@ linters-settings:
     rules:
       main:
         allow:
+          - bufio
+          - bytes
           - context
           - log
           - os
@@ -29,6 +31,7 @@ linters-settings:
           - errors
           - path/filepath
           - embed
+          - math
           - net
           - net/url
           - time
