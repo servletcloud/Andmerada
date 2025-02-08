@@ -2,11 +2,14 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"testing"
 
 	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -58,4 +61,26 @@ func GetRandomAvailablePort(t *testing.T) uint32 {
 	require.True(t, ok)
 
 	return uint32(addr.Port) //nolint:gosec
+}
+
+func IsPgTableExist(ctx context.Context, t *testing.T, conn *pgx.Conn, name string) bool {
+	t.Helper()
+
+	query := fmt.Sprintf("select * from %v limit 1;", name)
+
+	_, err := conn.Exec(ctx, query)
+
+	if err == nil {
+		return true
+	}
+
+	var pgError *pgconn.PgError
+
+	require.ErrorAs(t, err, &pgError)
+
+	if pgError.Code != pgerrcode.UndefinedTable {
+		require.NoError(t, err)
+	}
+
+	return false
 }

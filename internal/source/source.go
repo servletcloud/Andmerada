@@ -82,6 +82,14 @@ func Lint(conf LintConfiguration, report *LintReport) error {
 	return linter.lint()
 }
 
+func ScanAll(projectDir string, callback func(id MigrationID, name string)) error {
+	return scan(projectDir, func(id MigrationID, name string) bool {
+		callback(id, name)
+
+		return true
+	})
+}
+
 func Scan(projectDir string, callback func(id MigrationID, name string) bool) error {
 	return scan(projectDir, callback)
 }
