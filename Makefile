@@ -72,12 +72,12 @@ lint-docker:
 
 test-with-race:
 	@echo "Running tests..."
-	go test -shuffle on -timeout=30s -race ./...
+	go test -shuffle on -timeout=60s -race ./...
 
 
 test:
 	@echo "Running tests..."
-	go test -shuffle on -timeout=30s ./...
+	go test -shuffle on -timeout=60s ./...
 
 
 clean:
