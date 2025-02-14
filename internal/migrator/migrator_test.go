@@ -2,7 +2,6 @@ package migrator_test
 
 import (
 	"context"
-	"math"
 	"path/filepath"
 	"testing"
 
@@ -79,7 +78,7 @@ func TestApplyPending(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest,funlen
+//nolint:paralleltest
 func TestScanAppliedMigrations(t *testing.T) {
 	ctx := context.Background()
 	connectionURL := tests.StartEmbeddedPostgres(t)
@@ -102,10 +101,8 @@ func TestScanAppliedMigrations(t *testing.T) {
 
 		result := make([]uint64, 0)
 
-		err := applier.ScanAppliedMigrations(ctx, conn, minID, maxID, func(id uint64) bool {
+		err := applier.ScanAppliedMigrations(ctx, conn, minID, maxID, func(id uint64) {
 			result = append(result, id)
-
-			return true
 		})
 
 		require.NoError(t, err)
@@ -114,7 +111,7 @@ func TestScanAppliedMigrations(t *testing.T) {
 	}
 
 	t.Run("empty table", func(t *testing.T) {
-		actual := scanAppliedMigrations(t, math.MaxUint64, math.MaxUint64)
+		actual := scanAppliedMigrations(t, 0, 99991225112129)
 		require.Empty(t, actual)
 	})
 
@@ -130,24 +127,11 @@ func TestScanAppliedMigrations(t *testing.T) {
 			assert.Contains(t, actual, uint64(20241225112129), uint64(20241225112130), uint64(20241225112131))
 		})
 
-		t.Run("filter does not cover the boundaries", func(t *testing.T) {
+		t.Run("filter includes the boundary values", func(t *testing.T) {
 			actual := scanAppliedMigrations(t, 20241225112130, 20241225112130)
 
 			assert.Len(t, actual, 1)
 			assert.Contains(t, actual, uint64(20241225112130))
-		})
-
-		t.Run("early return", func(t *testing.T) {
-			counter := 0
-
-			err := applier.ScanAppliedMigrations(ctx, conn, 0, 20241225112131, func(uint64) bool {
-				counter++
-
-				return false
-			})
-
-			require.NoError(t, err)
-			assert.Equal(t, 1, counter)
 		})
 	})
 }

@@ -35,7 +35,7 @@ type Configuration struct {
 		BlockReason string `yaml:"block_reason"`
 	} `yaml:"down"`
 
-	Meta map[string]interface{} `yaml:"meta"`
+	Meta map[string]any `yaml:"meta"`
 }
 
 type LintConfiguration struct {
