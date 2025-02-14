@@ -31,7 +31,7 @@ func NewValidationError(result *gojsonschema.Result) *ValidationError {
 	return &ValidationError{validationResult: result}
 }
 
-func LoadFromFile(path string, schema string, out interface{}) error {
+func LoadFromFile(path string, schema string, out any) error {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("cannot read file %q: %w", path, err)

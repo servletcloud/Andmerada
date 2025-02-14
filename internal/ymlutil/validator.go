@@ -27,16 +27,16 @@ func validate(yml []byte, schema string) (*gojsonschema.Result, error) {
 }
 
 func ymlToJSON(yml []byte) ([]byte, error) {
-	var yamlData map[string]interface{}
+	var yamlData map[string]any
 
 	if err := yaml.Unmarshal(yml, &yamlData); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal YML to map[string]interface{}: %w", err)
+		return nil, fmt.Errorf("cannot unmarshal YML to map[string]any: %w", err)
 	}
 
 	result, err := json.Marshal(yamlData)
 
 	if err != nil {
-		return nil, fmt.Errorf("cannot marshal map[string]interface{} to JSON: %w", err)
+		return nil, fmt.Errorf("cannot marshal map[string]any to JSON: %w", err)
 	}
 
 	return result, nil

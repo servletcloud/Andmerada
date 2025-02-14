@@ -36,7 +36,7 @@ func TestMigrationYMLTemplateMatchesSchema(t *testing.T) {
 
 	yamlFile := resources.TemplateMigrationYml("Create users table")
 
-	var yamlData map[string]interface{}
+	var yamlData map[string]any
 
 	require.NoError(t, yaml.Unmarshal([]byte(yamlFile), &yamlData))
 

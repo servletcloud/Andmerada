@@ -1,12 +1,9 @@
 package migrator
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"math"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/servletcloud/Andmerada/internal/migrator/sqlres"
@@ -26,19 +23,15 @@ type Applier struct {
 func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error {
 	sourceIDToName := make(map[source.MigrationID]string)
 	dupeIDToName := make(map[source.MigrationID]string)
-	idMin := source.MigrationID(math.MaxUint64)
-	idMax := source.MigrationID(0)
+	idMin, idMax := source.MigrationID(math.MaxUint64), source.MigrationID(0)
 
 	err := source.ScanAll(applier.Project.Dir, func(id source.MigrationID, name string) {
-		_, found := sourceIDToName[id]
-		if found {
+		if _, found := sourceIDToName[id]; found {
 			dupeIDToName[id] = name
 		} else {
 			sourceIDToName[id] = name
+			idMin, idMax = min(idMin, id), max(idMax, id)
 		}
-
-		idMax = max(idMax, id)
-		idMin = min(idMin, id)
 	})
 
 	if err != nil {
@@ -71,34 +64,26 @@ func (applier *Applier) ScanAppliedMigrations(
 	ctx context.Context,
 	conn *pgx.Conn,
 	minID, maxID uint64,
-	callback func(uint64) bool,
+	callback func(uint64),
 ) error {
-	queryTemplate := "COPY (SELECT id FROM %s WHERE id >= %d AND id <= %d) TO STDOUT"
-	query := fmt.Sprintf(queryTemplate, applier.migrationsTableName(), minID, maxID)
+	queryTemplate := "SELECT id FROM %s WHERE id >= $1 AND id <= $2"
+	query := fmt.Sprintf(queryTemplate, applier.migrationsTableName())
 
-	var buf bytes.Buffer
-	_, err := conn.PgConn().CopyTo(ctx, &buf, query)
+	rows, err := conn.Query(ctx, query, minID, maxID)
 
 	if err != nil {
-		return fmt.Errorf("failed to execute COPY query %q: %w", query, err)
+		return fmt.Errorf("failed to execute SELECT query %q: %w", query, err)
 	}
-
-	scanner := bufio.NewScanner(strings.NewReader(buf.String()))
 
 	var id uint64
+	_, err = pgx.ForEachRow(rows, []any{&id}, func() error {
+		callback(id)
 
-	for scanner.Scan() {
-		if _, err := fmt.Sscanf(scanner.Text(), "%d", &id); err != nil {
-			return fmt.Errorf("failed to parse migration ID from %q: %w", scanner.Text(), err)
-		}
+		return nil
+	})
 
-		if !callback(id) {
-			return nil
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading COPY output: %w", err)
+	if err != nil {
+		return fmt.Errorf("failed to parse the resultset of the query %q: %w", query, err)
 	}
 
 	return nil
