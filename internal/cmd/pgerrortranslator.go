@@ -8,47 +8,50 @@ import (
 )
 
 type pgErrorTranslator struct {
-	writeString func(message string)
 }
 
-func (translator *pgErrorTranslator) prettyPrint(err *pgconn.PgError, sql string) {
-	translator.writeString(fmt.Sprintf("PostgreSQL Error: %s\n", err.Message))
+func (translator *pgErrorTranslator) prettyPrint(err *pgconn.PgError, sql string) string {
+	var sb strings.Builder
 
-	translator.writeKv("Severity", err.Severity)
+	sb.WriteString(fmt.Sprintf("PostgreSQL Error: %s\n", err.Message))
+
+	translator.writeKv(&sb, "Severity", err.Severity)
 
 	if err.Code != "" {
 		helpURL := "https://www.postgresql.org/docs/current/errcodes-appendix.html#ERRCODES-TABLE"
-		translator.writeString(fmt.Sprintf("Code: %v (more details at %v)\n", err.Code, helpURL))
+		sb.WriteString(fmt.Sprintf("Code: %v (more details at %v)\n", err.Code, helpURL))
 	}
 
-	translator.writeKv("Where", err.Where)
-	translator.writeKv("Hint", err.Hint)
-	translator.writeKv("Detail", err.Detail)
+	translator.writeKv(&sb, "Where", err.Where)
+	translator.writeKv(&sb, "Hint", err.Hint)
+	translator.writeKv(&sb, "Detail", err.Detail)
 
 	if err.Position > 0 && int(err.Position) <= len(sql) && sql != "" {
 		lineNumber, colNumber, highlightedSQL := translator.highlightSQLPosition(sql, int(err.Position))
-		translator.writeString(fmt.Sprintf("\nError Location at line %d, column %d:\n", lineNumber, colNumber))
-		translator.writeString(highlightedSQL)
+		sb.WriteString(fmt.Sprintf("\nError Location at line %d, column %d:\n", lineNumber, colNumber))
+		sb.WriteString(highlightedSQL)
 	}
 
-	translator.writeKv("Schema", err.SchemaName)
-	translator.writeKv("Table", err.TableName)
-	translator.writeKv("Column", err.ColumnName)
-	translator.writeKv("Constraint", err.ConstraintName)
+	translator.writeKv(&sb, "Schema", err.SchemaName)
+	translator.writeKv(&sb, "Table", err.TableName)
+	translator.writeKv(&sb, "Column", err.ColumnName)
+	translator.writeKv(&sb, "Constraint", err.ConstraintName)
 
 	if err.InternalQuery != "" {
-		translator.writeString("\n**Internal Query Debugging:**\n")
-		translator.writeString(fmt.Sprintf("Position: %v\n", err.InternalPosition))
-		translator.writeString(err.InternalQuery + "\n")
+		sb.WriteString("\n**Internal Query Debugging:**\n")
+		sb.WriteString(fmt.Sprintf("Position: %v\n", err.InternalPosition))
+		sb.WriteString(err.InternalQuery + "\n")
 	}
+
+	return sb.String()
 }
 
-func (translator *pgErrorTranslator) writeKv(key, value string) {
+func (translator *pgErrorTranslator) writeKv(sb *strings.Builder, key, value string) {
 	if value == "" {
 		return
 	}
 
-	translator.writeString(fmt.Sprintf("%s: %s\n", key, value))
+	sb.WriteString(fmt.Sprintf("%s: %s\n", key, value))
 }
 
 func (translator *pgErrorTranslator) highlightSQLPosition(sql string, pos int) (int, int, string) {

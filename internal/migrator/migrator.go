@@ -35,7 +35,7 @@ func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error 
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to scan migration files on disk: %w", err)
+		return wrapError(err, ErrTypeListMigrationsOnDisk)
 	}
 
 	report.SourcesOnDisk = len(sourceIDToName)
@@ -46,7 +46,7 @@ func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error 
 
 	connection, err := pgx.Connect(ctx, applier.DatabaseURL)
 	if err != nil {
-		return &PostgresConnectError{cause: err}
+		return wrapError(err, ErrTypeDBConnect)
 	}
 
 	defer func() { _ = connection.Close(ctx) }()
@@ -54,7 +54,7 @@ func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error 
 	ddl := sqlres.DDL(applier.Project.Configuration.TableNames.AppliedMigrations)
 
 	if err := execSimple(ctx, connection.PgConn(), ddl); err != nil {
-		return &CreateDDLFailedError{cause: err, SQL: ddl}
+		return wrapErrorWithSQL(err, ErrTypeCreateDDL, ddl)
 	}
 
 	return nil
@@ -72,7 +72,7 @@ func (applier *Applier) ScanAppliedMigrations(
 	rows, err := conn.Query(ctx, query, minID, maxID)
 
 	if err != nil {
-		return fmt.Errorf("failed to execute SELECT query %q: %w", query, err)
+		return wrapErrorWithSQL(err, ErrTypeScanAppliedMigrations, query)
 	}
 
 	var id uint64
@@ -83,7 +83,7 @@ func (applier *Applier) ScanAppliedMigrations(
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to parse the resultset of the query %q: %w", query, err)
+		return wrapErrorWithSQL(err, ErrTypeScanAppliedMigrations, query)
 	}
 
 	return nil

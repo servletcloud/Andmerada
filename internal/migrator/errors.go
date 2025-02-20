@@ -1,26 +1,32 @@
 package migrator
 
-type PostgresConnectError struct {
-	cause error
+type ErrType int
+
+const (
+	ErrTypeDBConnect ErrType = iota
+	ErrTypeCreateDDL
+	ErrTypeListMigrationsOnDisk
+	ErrTypeScanAppliedMigrations
+)
+
+func wrapError(err error, errType ErrType) error {
+	return &MigrateError{Cause: err, ErrType: errType, SQL: ""}
 }
 
-func (e *PostgresConnectError) Error() string {
-	return e.cause.Error()
+func wrapErrorWithSQL(err error, errType ErrType, sql string) error {
+	return &MigrateError{Cause: err, ErrType: errType, SQL: sql}
 }
 
-func (e *PostgresConnectError) Unwrap() error {
-	return e.cause
+type MigrateError struct {
+	Cause   error
+	ErrType ErrType
+	SQL     string
 }
 
-type CreateDDLFailedError struct {
-	cause error
-	SQL   string
+func (e *MigrateError) Error() string {
+	return e.Cause.Error()
 }
 
-func (e *CreateDDLFailedError) Error() string {
-	return e.cause.Error()
-}
-
-func (e *CreateDDLFailedError) Unwrap() error {
-	return e.cause
+func (e *MigrateError) Unwrap() error {
+	return e.Cause
 }

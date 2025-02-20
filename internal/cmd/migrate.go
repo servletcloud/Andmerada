@@ -59,72 +59,77 @@ func (m *migrateCmdRunner) Run(cmd *cobra.Command) {
 	report := migrator.Report{SourcesOnDisk: 0}
 
 	if err := applier.ApplyPending(cmd.Context(), &report); err != nil {
-		if !m.tryPrettyPrintError(err) {
-			log.Panic(err)
-		}
+		m.printError(err)
 	} else {
 		m.printReport(&report)
 	}
 }
 
-func (m *migrateCmdRunner) tryPrettyPrintError(err error) bool {
-	return m.tryPrettyPrintCancellation(err) ||
-		m.tryPrettyPrintConnectError(err) ||
-		m.tryPrettyPrintDDLError(err)
+func (m *migrateCmdRunner) printError(err error) {
+	if m.isCancellationError(err) {
+		m.printCancellationError(err)
+
+		return
+	}
+
+	var migratorErr *migrator.MigrateError
+
+	if !errors.As(err, &migratorErr) {
+		log.Panic(err)
+	}
+
+	switch migratorErr.ErrType {
+	case migrator.ErrTypeDBConnect:
+		m.printConnectError(migratorErr)
+	case migrator.ErrTypeCreateDDL:
+		m.printDDLError(migratorErr)
+	case migrator.ErrTypeListMigrationsOnDisk:
+		log.Printf("Failed to list migrations on disk: %v", migratorErr)
+	case migrator.ErrTypeScanAppliedMigrations:
+		log.Printf("Failed to scan applied migrations: %v", m.pgErrorToPrettyString(migratorErr))
+	default:
+		log.Panic(migratorErr)
+	}
 }
 
-func (m *migrateCmdRunner) tryPrettyPrintCancellation(err error) bool {
-	if errors.Is(err, context.Canceled) {
+func (m *migrateCmdRunner) printCancellationError(err error) {
+	switch {
+	case errors.Is(err, context.Canceled):
 		log.Printf("Execution was cancelled by the user or due to a system timeout: %v", err)
-
-		return true
-	}
-
-	if errors.Is(err, context.DeadlineExceeded) {
+	case errors.Is(err, context.DeadlineExceeded):
 		log.Printf("Execution timed out before completing: %v", err)
-
-		return true
 	}
-
-	return false
 }
 
-func (m *migrateCmdRunner) tryPrettyPrintConnectError(err error) bool {
-	var connectErr *migrator.PostgresConnectError
+func (m *migrateCmdRunner) isCancellationError(err error) bool {
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+}
 
-	if !errors.As(err, &connectErr) {
-		return false
-	}
-
+func (m *migrateCmdRunner) printConnectError(err *migrator.MigrateError) {
 	var parseConfigErr *pgconn.ParseConfigError
+
 	if errors.As(err, &parseConfigErr) {
 		helpURL := "https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING"
 		log.Printf("Invalid database URL: %v\n\nRead more at %v", parseConfigErr, helpURL)
 	} else {
-		log.Printf("Failed to connect to the database: %v", connectErr)
+		log.Printf("Failed to connect to the database: %v", err)
 	}
-
-	return true
 }
 
-func (m *migrateCmdRunner) tryPrettyPrintDDLError(err error) bool {
-	var ddlErr *migrator.CreateDDLFailedError
-
-	if !errors.As(err, &ddlErr) {
-		return false
-	}
-
-	var pgError *pgconn.PgError
-	if errors.As(ddlErr, &pgError) {
-		log.Println(prettyPrintPgErr(pgError, ddlErr.SQL))
-	} else {
-		log.Println(ddlErr.Error())
-	}
-
+func (m *migrateCmdRunner) printDDLError(err *migrator.MigrateError) {
+	log.Println(m.pgErrorToPrettyString(err))
 	log.Println("Failed to create auxiliary tables for managing migrations.")
 	log.Println("Run 'andmerada show-ddl' to view the DDL SQL if you need to execute it manually.")
+}
 
-	return true
+func (m *migrateCmdRunner) pgErrorToPrettyString(err *migrator.MigrateError) string {
+	var pgError *pgconn.PgError
+
+	if errors.As(err, &pgError) {
+		return (&pgErrorTranslator{}).prettyPrint(pgError, err.SQL)
+	}
+
+	return err.Error()
 }
 
 func (m *migrateCmdRunner) printReport(report *migrator.Report) {
