@@ -30,7 +30,7 @@ func create(projectDir string, name string, time time.Time) (CreateSourceResult,
 		return CreateSourceResult{}, err
 	}
 
-	return CreateSourceResult{BaseDir: baseMigrationDir, Latest: latest}, nil
+	return CreateSourceResult{BaseDir: baseMigrationDir, FullPath: migrationDir, Latest: latest}, nil
 }
 
 func verifyIDUnique(newID MigrationID, projectDir string) (bool, error) {

@@ -6,10 +6,13 @@ import (
 	"log"
 	"os"
 
+	"github.com/dustin/go-humanize"
 	"github.com/servletcloud/Andmerada/internal/project"
 	"github.com/servletcloud/Andmerada/internal/ymlutil"
 	"gopkg.in/yaml.v3"
 )
+
+const MaxSQLFileSizeBytes = 1 * humanize.MiByte
 
 func ensureProjectInitialized(dir string) {
 	_ = mustLoadProject(dir)
@@ -27,7 +30,7 @@ func mustLoadProject(dir string) project.Project {
 	}
 
 	if schemaError := new(ymlutil.ValidationError); errors.As(err, &schemaError) {
-		log.Fatalf("Schema validation failed for andmerada.yml:\n%v", schemaError.Details())
+		log.Fatalf("Schema validation failed for andmerada.yml:\n%v", schemaError)
 	}
 
 	var yamlError *yaml.TypeError

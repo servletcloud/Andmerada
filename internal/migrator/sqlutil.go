@@ -15,3 +15,14 @@ func execSimple(ctx context.Context, conn *pgconn.PgConn, sql string) error {
 
 	return mrr.Close() //nolint:wrapcheck
 }
+
+func isConnectionInTransaction(conn *pgconn.PgConn) bool {
+	const (
+		inTransaction       = 'T'
+		inFailedTransaction = 'E'
+	)
+
+	status := conn.TxStatus()
+
+	return status == inTransaction || status == inFailedTransaction
+}

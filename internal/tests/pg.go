@@ -63,7 +63,7 @@ func GetRandomAvailablePort(t *testing.T) uint32 {
 	return uint32(addr.Port) //nolint:gosec
 }
 
-func IsPgTableExist(ctx context.Context, t *testing.T, conn *pgx.Conn, name string) bool {
+func isPgTableExist(ctx context.Context, t *testing.T, conn *pgx.Conn, name string) bool {
 	t.Helper()
 
 	query := fmt.Sprintf("select * from %v limit 1;", name)

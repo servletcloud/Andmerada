@@ -23,12 +23,14 @@ linters-settings:
           - bufio
           - bytes
           - context
+          - crypto/sha256
           - log
           - os
           - fmt
           - strings
           - unicode
           - errors
+          - encoding/hex
           - path/filepath
           - embed
           - math

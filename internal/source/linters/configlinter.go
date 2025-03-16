@@ -35,7 +35,7 @@ func (linter *ConfigLinter) translateError(err error) string {
 	if errors.Is(err, os.ErrNotExist) {
 		return "File does not exist"
 	} else if schemaError := new(ymlutil.ValidationError); errors.As(err, &schemaError) {
-		return fmt.Sprint("Schema validation failed:\n", schemaError.Details())
+		return fmt.Sprint("Schema validation failed:\n", schemaError)
 	} else if yamlError := new(yaml.TypeError); errors.As(err, &yamlError) {
 		return yamlError.Error()
 	}
