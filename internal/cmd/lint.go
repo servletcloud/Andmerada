@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dustin/go-humanize"
 	"github.com/dustin/go-humanize/english"
 	"github.com/servletcloud/Andmerada/internal/cmd/descriptions"
 	"github.com/servletcloud/Andmerada/internal/osutil"
@@ -37,7 +36,7 @@ func lintCommand() *cobra.Command {
 
 			config := source.LintConfiguration{
 				ProjectDir:      currentDir,
-				MaxSQLFileSize:  1 * humanize.MiByte,
+				MaxSQLFileSize:  MaxSQLFileSizeBytes,
 				NowUTC:          time.Now().UTC(),
 				UpSQLTemplate:   resources.TemplateUpSQL(),
 				DownSQLTemplate: resources.TemplateDownSQL(),
