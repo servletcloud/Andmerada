@@ -6,8 +6,9 @@ import (
 )
 
 type CreateSourceResult struct {
-	BaseDir string
-	Latest  bool
+	BaseDir  string
+	FullPath string
+	Latest   bool
 }
 
 type MigrationID uint64
@@ -36,6 +37,12 @@ type Configuration struct {
 	} `yaml:"down"`
 
 	Meta map[string]any `yaml:"meta"`
+}
+
+type Source struct {
+	Configuration Configuration
+	UpSQL         string
+	DownSQL       string
 }
 
 type LintConfiguration struct {

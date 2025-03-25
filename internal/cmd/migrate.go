@@ -53,10 +53,11 @@ func (m *migrateCmdRunner) Run(cmd *cobra.Command) {
 	}
 
 	applier := &migrator.Applier{
-		Project:     mustLoadProject(osutil.GetwdOrPanic()),
-		DatabaseURL: databaseURL,
+		MaxSQLFileSize: MaxSQLFileSizeBytes,
+		Project:        mustLoadProject(osutil.GetwdOrPanic()),
+		DatabaseURL:    databaseURL,
 	}
-	report := migrator.Report{SourcesOnDisk: 0}
+	report := migrator.Report{SourcesOnDisk: 0, PendingSources: 0}
 
 	if err := applier.ApplyPending(cmd.Context(), &report); err != nil {
 		m.printError(err)
@@ -84,20 +85,24 @@ func (m *migrateCmdRunner) printError(err error) {
 	case migrator.ErrTypeCreateDDL:
 		m.printDDLError(migratorErr)
 	case migrator.ErrTypeListMigrationsOnDisk:
-		log.Printf("Failed to list migrations on disk: %v", migratorErr)
+		log.Printf("Failed to list migrations on disk:\n%v", migratorErr)
 	case migrator.ErrTypeScanAppliedMigrations:
-		log.Printf("Failed to scan applied migrations: %v", m.pgErrorToPrettyString(migratorErr))
+		log.Printf("Failed to scan applied migrations:\n%v", m.pgErrorToPrettyString(migratorErr))
+	case migrator.ErrTypeApplyMigration:
+		m.printApplyError(migratorErr)
+	case migrator.ErrTypeRegisterMigration:
+		log.Printf("Failed to register migration:\n%v", m.pgErrorToPrettyString(migratorErr))
 	default:
-		log.Panic(migratorErr)
+		log.Println(migratorErr.Error())
 	}
 }
 
 func (m *migrateCmdRunner) printCancellationError(err error) {
 	switch {
 	case errors.Is(err, context.Canceled):
-		log.Printf("Execution was cancelled by the user or due to a system timeout: %v", err)
+		log.Printf("Execution was cancelled by the user or due to a system timeout:\n%v", err)
 	case errors.Is(err, context.DeadlineExceeded):
-		log.Printf("Execution timed out before completing: %v", err)
+		log.Printf("Execution timed out before completing:\n%v", err)
 	}
 }
 
@@ -122,11 +127,25 @@ func (m *migrateCmdRunner) printDDLError(err *migrator.MigrateError) {
 	log.Println("Run 'andmerada show-ddl' to view the DDL SQL if you need to execute it manually.")
 }
 
-func (m *migrateCmdRunner) pgErrorToPrettyString(err *migrator.MigrateError) string {
+func (m *migrateCmdRunner) printApplyError(err *migrator.MigrateError) {
+	var applyError *migrator.ApplyMigrationError
+
+	msg := m.pgErrorToPrettyString(err)
+
+	if errors.As(err, &applyError) {
+		log.Printf("Failed to apply migration %q:\n%v", applyError.Name, msg)
+	} else {
+		log.Printf("Failed to apply a migration:\n%v", msg)
+	}
+}
+
+func (m *migrateCmdRunner) pgErrorToPrettyString(err error) string {
+	var execSQLErr *migrator.ExecSQLError
+
 	var pgError *pgconn.PgError
 
-	if errors.As(err, &pgError) {
-		return (&pgErrorTranslator{}).prettyPrint(pgError, err.SQL)
+	if errors.As(err, &execSQLErr) && errors.As(err, &pgError) {
+		return (&pgErrorTranslator{}).prettyPrint(pgError, execSQLErr.SQL)
 	}
 
 	return err.Error()
