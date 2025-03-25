@@ -10,16 +10,16 @@ const (
 )
 
 //go:embed init.txt
-var initRaw []byte
+var initRaw string
 
 //go:embed lint.txt
-var lintRaw []byte
+var lintRaw string
 
 //go:embed create_migration.txt
-var crMigrationRaw []byte
+var crMigrationRaw string
 
 //go:embed migrate.txt
-var migrateRaw []byte
+var migrateRaw string
 
 type CommandDescription struct {
 	Use   string
@@ -43,8 +43,8 @@ func MigrateDescription() CommandDescription {
 	return loadCommandDescription(migrateRaw)
 }
 
-func loadCommandDescription(s []byte) CommandDescription {
-	lines := strings.Split(string(s), unixNewLine)
+func loadCommandDescription(s string) CommandDescription {
+	lines := strings.Split(s, unixNewLine)
 
 	return CommandDescription{
 		Use:   lines[0],

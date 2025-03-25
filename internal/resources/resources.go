@@ -6,57 +6,57 @@ import (
 )
 
 //go:embed template.andmerada.yml
-var templateAndmeradaYml []byte
+var templateAndmeradaYml string
 
 //go:embed template.migration.yml
-var templateMigrationYml []byte
+var templateMigrationYml string
 
 //go:embed template.up.sql
-var templateUpSQL []byte
+var templateUpSQL string
 
 //go:embed template.down.sql
-var templateDownSQL []byte
+var templateDownSQL string
 
 //go:embed msg_init_completed.txt
-var msgInitCompleted []byte
+var msgInitCompleted string
 
 //go:embed msg_err_project_exists.txt
-var msgErrProjectExists []byte
+var msgErrProjectExists string
 
 //go:embed msg_migration_created.txt
-var msgMigrationCreated []byte
+var msgMigrationCreated string
 
 //go:embed msg_migration_not_latest.txt
-var msgMigrationNotLatest []byte
+var msgMigrationNotLatest string
 
 func TemplateAndmeradaYml(projectName string) string {
-	return strings.ReplaceAll(string(templateAndmeradaYml), "{{project_name}}", projectName)
+	return strings.ReplaceAll(templateAndmeradaYml, "{{project_name}}", projectName)
 }
 
 func TemplateMigrationYml(name string) string {
-	return strings.ReplaceAll(string(templateMigrationYml), "{{name}}", name)
+	return strings.ReplaceAll(templateMigrationYml, "{{name}}", name)
 }
 
 func TemplateUpSQL() string {
-	return string(templateUpSQL)
+	return templateUpSQL
 }
 
 func TemplateDownSQL() string {
-	return string(templateDownSQL)
+	return templateDownSQL
 }
 
 func MsgInitCompleted() string {
-	return string(msgInitCompleted)
+	return msgInitCompleted
 }
 
 func MsgErrProjectExists() string {
-	return string(msgErrProjectExists)
+	return msgErrProjectExists
 }
 
 func MsgMigrationCreated(dir string) string {
-	return strings.ReplaceAll(string(msgMigrationCreated), "{{dir}}", dir)
+	return strings.ReplaceAll(msgMigrationCreated, "{{dir}}", dir)
 }
 
 func MsgMigrationNotLatest() string {
-	return string(msgMigrationNotLatest)
+	return msgMigrationNotLatest
 }

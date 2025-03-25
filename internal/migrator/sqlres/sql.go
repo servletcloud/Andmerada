@@ -6,10 +6,8 @@ import (
 )
 
 //go:embed ddl.sql
-var ddlBytes []byte
+var ddl string
 
 func DDL(appliedMigrationsName string) string {
-	ddl := string(ddlBytes)
-
 	return strings.ReplaceAll(ddl, "_applied_migrations_", appliedMigrationsName)
 }
