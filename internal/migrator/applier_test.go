@@ -61,7 +61,7 @@ func TestApplyPending(t *testing.T) {
 		createMigration := func(t *testing.T, title string, timestamp string, upSQL string) source.CreateSourceResult {
 			t.Helper()
 
-			source := createSource(t, dir, title, timestamp)
+			source := tests.CreateSource(t, dir, title, timestamp)
 			writeUpSQL(t, source.FullPath, upSQL)
 
 			return source
@@ -279,23 +279,6 @@ func insertDummyMigration(ctx context.Context, t *testing.T, conn *pgx.Conn, id 
 
 	_, err := conn.Exec(ctx, query, id, project, name, sqlUp, sqlUpSHA256, durationMS, meta)
 	require.NoError(t, err)
-}
-
-func createSource(t *testing.T, dir string, title string, timestamp string) source.CreateSourceResult {
-	t.Helper()
-
-	timeParsed, err := time.Parse("20060102150405", timestamp)
-	require.NoError(t, err)
-
-	result, err := source.Create(dir, title, timeParsed)
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		err := os.RemoveAll(result.FullPath)
-		require.NoError(t, err)
-	})
-
-	return result
 }
 
 func writeUpSQL(t *testing.T, dir string, content string) {
