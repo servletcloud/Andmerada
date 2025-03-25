@@ -5,15 +5,15 @@ import (
 )
 
 //go:embed migration.yml.v1.json
-var migrationSchema []byte
+var migrationSchema string
 
 //go:embed andmerada.yml.v1.json
-var andmeradaSchema []byte
+var andmeradaSchema string
 
 func GetMigrationSchema() string {
-	return string(migrationSchema)
+	return migrationSchema
 }
 
 func GetAndmeradaSchema() string {
-	return string(andmeradaSchema)
+	return andmeradaSchema
 }
