@@ -7,7 +7,6 @@ import (
 	"math"
 	"path/filepath"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -192,32 +191,7 @@ func (applier *Applier) registerMigration(
 	source *source.Source,
 	duration time.Duration,
 ) error {
-	columns := []string{
-		"id",
-		"project",
-		"name",
-		"applied_at",
-		"sql_up",
-		"sql_down",
-		"sql_up_sha256",
-		"sql_down_sha256",
-		"duration_ms",
-		"rollback_blocked",
-		"meta",
-	}
-
-	params := make([]string, len(columns))
-
-	for i, column := range columns {
-		params[i] = "@" + column
-	}
-
-	query := fmt.Sprintf(
-		`INSERT INTO %s (%s) VALUES (%s);`,
-		applier.migrationsTableName(),
-		strings.Join(columns, ","),
-		strings.Join(params, ","),
-	)
+	query := sqlres.RegisterMigrationQuery(applier.migrationsTableName())
 
 	args := pgx.NamedArgs{
 		"id":               id,
