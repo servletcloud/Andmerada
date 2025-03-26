@@ -44,11 +44,11 @@ func TestApplyPending(t *testing.T) {
 
 	t.Run("There are no migrations", func(t *testing.T) {
 		t.Run("It does not create a migrations table", func(t *testing.T) {
-			tests.AssertPgTableNotExist(ctx, t, conn, "applied_migrations")
+			tests.AssertPgTableNotExist(ctx, t, conn, "migrations")
 
 			mustApplyPending(t)
 
-			tests.AssertPgTableNotExist(ctx, t, conn, "applied_migrations")
+			tests.AssertPgTableNotExist(ctx, t, conn, "migrations")
 		})
 
 		t.Run("Report has zero migrations", func(t *testing.T) {
@@ -72,12 +72,12 @@ func TestApplyPending(t *testing.T) {
 		createMigration(t, "Rename column", "20241229143752", "ALTER TABLE users RENAME COLUMN age TO years;")
 
 		t.Run("It applies the migrations in order", func(t *testing.T) {
-			tests.AssertPgTableNotExist(ctx, t, conn, "applied_migrations")
+			tests.AssertPgTableNotExist(ctx, t, conn, "migrations")
 			tests.AssertPgTableNotExist(ctx, t, conn, "users")
 
 			mustApplyPending(t)
 
-			tests.AssertPgTableExist(ctx, t, conn, "applied_migrations")
+			tests.AssertPgTableExist(ctx, t, conn, "migrations")
 			tests.AssertPgTableExist(ctx, t, conn, "users")
 
 			assert.Equal(t, 3, report.SourcesOnDisk)
@@ -90,7 +90,7 @@ func TestApplyPending(t *testing.T) {
 		})
 
 		t.Run("It is idempotent, does not apply the migrations again", func(t *testing.T) {
-			tests.AssertPgTableExist(ctx, t, conn, "applied_migrations")
+			tests.AssertPgTableExist(ctx, t, conn, "migrations")
 			tests.AssertPgTableExist(ctx, t, conn, "users")
 
 			mustApplyPending(t)
@@ -130,34 +130,32 @@ func TestApplyPending(t *testing.T) {
 			assert.Equal(t, []string{result.BaseDir, result.BaseDir + "_dupe"}, dupErr.Paths)
 		})
 
-		t.Run("Populates columns of applied_migrations table", func(t *testing.T) {
+		t.Run("Populates columns of migrations table", func(t *testing.T) {
 			createMigration(t, "Dummy migration", "20250109025508", "SELECT 1;")
 
 			err := applier.ApplyPending(ctx, &report)
 			require.NoError(t, err)
 
-			t.Run("Populates id,project,name,applied_at columns", func(t *testing.T) {
-				query := "SELECT id, project, name, applied_at FROM applied_migrations WHERE id=20250109025508"
+			t.Run("Populates id,name,applied_at columns", func(t *testing.T) {
+				query := "SELECT id, name, applied_at FROM migrations WHERE id=20250109025508"
 				row := conn.QueryRow(ctx, query)
 
 				var (
 					id        uint64
-					project   string
 					name      string
 					appliedAt time.Time
 				)
 
-				err := row.Scan(&id, &project, &name, &appliedAt)
+				err := row.Scan(&id, &name, &appliedAt)
 				require.NoError(t, err)
 
 				assert.Equal(t, uint64(20250109025508), id)
-				assert.Equal(t, "migrator_test", project)
 				assert.Equal(t, "Dummy migration", name)
 				assert.False(t, appliedAt.IsZero())
 			})
 
 			t.Run("Populates sql and hashes columns", func(t *testing.T) {
-				query := "SELECT sql_up,sql_down,sql_up_sha256,sql_down_sha256 FROM applied_migrations WHERE id=20250109025508"
+				query := "SELECT sql_up,sql_down,sql_up_sha256,sql_down_sha256 FROM migrations WHERE id=20250109025508"
 				row := conn.QueryRow(ctx, query)
 
 				var sqlUp, sqlDown, sqlUpSHA256, sqlDownSHA256 string
@@ -172,7 +170,7 @@ func TestApplyPending(t *testing.T) {
 			})
 
 			t.Run("Populates duration_ms,rollback_blocked,meta columns", func(t *testing.T) {
-				query := "SELECT duration_ms,rollback_blocked,meta FROM applied_migrations WHERE id=20250109025508"
+				query := "SELECT duration_ms,rollback_blocked,meta FROM migrations WHERE id=20250109025508"
 				row := conn.QueryRow(ctx, query)
 
 				var (
@@ -199,7 +197,7 @@ func TestScanAppliedMigrations(t *testing.T) {
 	conn := tests.OpenPgConnection(t, connectionURL)
 	dir := t.TempDir()
 
-	_, err := conn.Exec(ctx, sqlres.DDL("applied_migrations"))
+	_, err := conn.Exec(ctx, sqlres.DDL("migrations"))
 	require.NoError(t, err)
 
 	applier := &migrator.Applier{
@@ -253,19 +251,13 @@ func TestScanAppliedMigrations(t *testing.T) {
 
 func createProjectConfig() project.Configuration {
 	return project.Configuration{
-		Name: "migrator_test",
-		TableNames: struct {
-			AppliedMigrations string `yaml:"applied_migrations"`
-		}{
-			AppliedMigrations: "applied_migrations",
-		},
+		MigrationsTableName: "migrations",
 	}
 }
 
 func insertDummyMigration(ctx context.Context, t *testing.T, conn *pgx.Conn, id uint64) {
 	t.Helper()
 
-	project := "test_scan_applied_migrations"
 	name := "create users table"
 	sqlUp := "create table users (id bigint primary key);"
 	sqlUpSHA256 := "9473f4cfe827e5c29acffc4c80b8194aa3df919577fbf2f6b11df3d0f14cd907"
@@ -273,11 +265,11 @@ func insertDummyMigration(ctx context.Context, t *testing.T, conn *pgx.Conn, id 
 	meta := make(map[string]struct{})
 
 	query := `
-		INSERT INTO applied_migrations (id, project, name, sql_up, sql_up_sha256, duration_ms, meta)
-		VALUES ($1, $2, $3, $4, $5, $6, $7);
+		INSERT INTO migrations (id, name, sql_up, sql_up_sha256, duration_ms, meta)
+		VALUES ($1, $2, $3, $4, $5, $6);
 	`
 
-	_, err := conn.Exec(ctx, query, id, project, name, sqlUp, sqlUpSHA256, durationMS, meta)
+	_, err := conn.Exec(ctx, query, id, name, sqlUp, sqlUpSHA256, durationMS, meta)
 	require.NoError(t, err)
 }
 

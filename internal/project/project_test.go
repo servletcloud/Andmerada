@@ -7,7 +7,6 @@ import (
 
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/project"
-	"github.com/servletcloud/Andmerada/internal/tests"
 	"github.com/servletcloud/Andmerada/internal/ymlutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +16,7 @@ import (
 func TestInitialize(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Create directory, configuration file, resolves configuration placeholders", func(t *testing.T) {
+	t.Run("Create directory, configuration file", func(t *testing.T) {
 		t.Parallel()
 
 		projectDir := filepath.Join(t.TempDir(), "migrations/main_db_project")
@@ -25,8 +24,7 @@ func TestInitialize(t *testing.T) {
 		require.NoError(t, project.Initialize(projectDir))
 
 		assert.DirExists(t, projectDir)
-
-		tests.AssertFileContains(t, filepath.Join(projectDir, "andmerada.yml"), `name: "main_db_project"`)
+		assert.FileExists(t, filepath.Join(projectDir, "andmerada.yml"))
 	})
 
 	t.Run("Returns specific error it target project does already exist", func(t *testing.T) {
@@ -57,8 +55,7 @@ func TestLoad(t *testing.T) {
 		configuration := project.Configuration
 
 		assert.Equal(t, projectDir, project.Dir)
-		assert.Equal(t, filepath.Base(projectDir), configuration.Name)
-		assert.Equal(t, "applied_migrations", configuration.TableNames.AppliedMigrations)
+		assert.Equal(t, "migrations", configuration.MigrationsTableName)
 	})
 
 	t.Run("returns os.ErrNotExist when project dir does not exist", func(t *testing.T) {

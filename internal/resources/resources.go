@@ -29,8 +29,8 @@ var msgMigrationCreated string
 //go:embed msg_migration_not_latest.txt
 var msgMigrationNotLatest string
 
-func TemplateAndmeradaYml(projectName string) string {
-	return strings.ReplaceAll(templateAndmeradaYml, "{{project_name}}", projectName)
+func TemplateAndmeradaYml() string {
+	return templateAndmeradaYml
 }
 
 func TemplateMigrationYml(name string) string {

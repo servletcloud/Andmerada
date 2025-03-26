@@ -13,11 +13,7 @@ type Project struct {
 }
 
 type Configuration struct {
-	Name string `yaml:"name"`
-
-	TableNames struct {
-		AppliedMigrations string `yaml:"applied_migrations"`
-	} `yaml:"table_names"`
+	MigrationsTableName string `yaml:"migrations_table_name"`
 }
 
 var (

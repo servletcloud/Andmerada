@@ -13,15 +13,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func TestTemplateAndmeradaYml(t *testing.T) {
-	t.Parallel()
-
-	content := resources.TemplateAndmeradaYml("maindb")
-
-	assert.Contains(t, content, `name: "maindb"`)
-	tests.AssertPlaceholdersResolved(t, content)
-}
-
 func TestTemplateMigrationYml(t *testing.T) {
 	t.Parallel()
 

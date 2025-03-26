@@ -27,10 +27,12 @@ func scan(projectDir string, callback func(id MigrationID, name string) bool) er
 		name := entry.Name()
 		id := NewIDFromString(name)
 
-		if id != EmptyMigrationID {
-			if !callback(id, name) {
-				break
-			}
+		if id == EmptyMigrationID {
+			continue
+		}
+
+		if !callback(id, name) {
+			break
 		}
 	}
 
