@@ -60,7 +60,7 @@ func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error 
 
 	defer func() { _ = connection.Close(ctx) }()
 
-	ddl := sqlres.DDL(applier.migrationsTableName())
+	ddl := sqlres.DDL(applier.Project.Configuration.MigrationsTableName)
 
 	if err := execSimple(ctx, connection.PgConn(), ddl); err != nil {
 		return wrapError(&ExecSQLError{Cause: err, SQL: ddl}, ErrTypeCreateDDL)
