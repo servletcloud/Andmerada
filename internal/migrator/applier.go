@@ -2,7 +2,6 @@ package migrator
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"math"
 	"path/filepath"
@@ -24,9 +23,13 @@ type Applier struct {
 	MaxSQLFileSize int64
 	DatabaseURL    string
 	Project        project.Project
+
+	migrationsRepo *Migrations
 }
 
 func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error {
+	applier.migrationsRepo = &Migrations{TableName: applier.Project.Configuration.MigrationsTableName}
+
 	sourceIDToName := make(map[source.MigrationID]string)
 	dupeIDToName := make(map[source.MigrationID]string)
 	idMin, idMax := source.MigrationID(math.MaxUint64), source.MigrationID(0)
@@ -57,18 +60,20 @@ func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error 
 
 	defer func() { _ = connection.Close(ctx) }()
 
-	ddl := sqlres.DDL(applier.migrationsTableName())
+	ddl := sqlres.DDL(applier.Project.Configuration.MigrationsTableName)
 
 	if err := execSimple(ctx, connection.PgConn(), ddl); err != nil {
 		return wrapError(&ExecSQLError{Cause: err, SQL: ddl}, ErrTypeCreateDDL)
 	}
 
-	err = applier.ScanAppliedMigrations(ctx, connection, uint64(idMin), uint64(idMax), func(id uint64) {
-		delete(sourceIDToName, source.MigrationID(id))
-	})
+	appliedIDs, err := applier.migrationsRepo.ScanApplied(ctx, connection, uint64(idMin), uint64(idMax))
 
 	if err != nil {
-		return err
+		return wrapError(err, ErrTypeScanAppliedMigrations)
+	}
+
+	for _, id := range appliedIDs {
+		delete(sourceIDToName, source.MigrationID(id))
 	}
 
 	report.PendingSources = len(sourceIDToName)
@@ -79,35 +84,6 @@ func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error 
 
 	if err = applier.applyAllPending(ctx, connection, sourceIDToName, dupeIDToName); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (applier *Applier) ScanAppliedMigrations(
-	ctx context.Context,
-	conn *pgx.Conn,
-	minID, maxID uint64,
-	callback func(uint64),
-) error {
-	queryTemplate := "SELECT id FROM %s WHERE id >= $1 AND id <= $2"
-	query := fmt.Sprintf(queryTemplate, applier.migrationsTableName())
-
-	rows, err := conn.Query(ctx, query, minID, maxID)
-
-	if err != nil {
-		return wrapError(&ExecSQLError{Cause: err, SQL: query}, ErrTypeScanAppliedMigrations)
-	}
-
-	var id uint64
-	_, err = pgx.ForEachRow(rows, []any{&id}, func() error {
-		callback(id)
-
-		return nil
-	})
-
-	if err != nil {
-		return wrapError(&ExecSQLError{Cause: err, SQL: query}, ErrTypeScanAppliedMigrations)
 	}
 
 	return nil
@@ -144,7 +120,7 @@ func (applier *Applier) applyAllPending(
 
 		if duration, err := applier.applyMigration(ctx, conn, source.UpSQL, name); err != nil {
 			return wrapError(&ApplyMigrationError{Cause: err, Name: name}, ErrTypeApplyMigration)
-		} else if err := applier.registerMigration(ctx, conn, id, &source, duration); err != nil {
+		} else if err := applier.registerMigration(ctx, conn, uint64(id), &source, duration); err != nil {
 			return wrapError(err, ErrTypeRegisterMigration)
 		}
 	}
@@ -187,46 +163,30 @@ func (applier *Applier) applyMigration(
 func (applier *Applier) registerMigration(
 	ctx context.Context,
 	conn *pgx.Conn,
-	id source.MigrationID,
+	id uint64,
 	source *source.Source,
 	duration time.Duration,
 ) error {
-	query := sqlres.RegisterMigrationQuery(applier.migrationsTableName())
-
-	args := pgx.NamedArgs{
-		"id":               id,
-		"name":             source.Configuration.Name,
-		"applied_at":       time.Now().UTC(),
-		"sql_up":           source.UpSQL,
-		"sql_down":         source.DownSQL,
-		"sql_up_sha256":    Sha256ToHexStr(source.UpSQL),
-		"sql_down_sha256":  Sha256ToHexStr(source.DownSQL),
-		"duration_ms":      duration.Milliseconds(),
-		"rollback_blocked": source.Configuration.Down.Block,
-		"meta":             source.Configuration.Meta,
+	migration := &Migration{
+		ID:              id,
+		Name:            source.Configuration.Name,
+		AppliedAt:       time.Now().UTC(),
+		SQLUp:           source.UpSQL,
+		SQLDown:         source.DownSQL,
+		SQLUpSHA256:     Sha256ToHexStr(source.UpSQL),
+		SQLDownSHA256:   Sha256ToHexStr(source.DownSQL),
+		DurationMs:      duration.Milliseconds(),
+		RollbackBlocked: source.Configuration.Down.Block,
+		Meta:            source.Configuration.Meta,
 	}
 
-	_, err := conn.Exec(ctx, query, args)
-
-	if err != nil {
-		return &ExecSQLError{Cause: err, SQL: query}
-	}
-
-	return nil
+	return applier.migrationsRepo.Insert(ctx, conn, migration)
 }
 
 func (applier *Applier) getSortedMigrationIDs(sourceIDToName map[source.MigrationID]string) []source.MigrationID {
-	sortedIDs := make([]source.MigrationID, 0, len(sourceIDToName))
+	ids := mapKeysToSlice(sourceIDToName)
 
-	for id := range sourceIDToName {
-		sortedIDs = append(sortedIDs, id)
-	}
+	slices.Sort(ids)
 
-	slices.Sort(sortedIDs)
-
-	return sortedIDs
-}
-
-func (applier *Applier) migrationsTableName() string {
-	return applier.Project.Configuration.MigrationsTableName
+	return ids
 }
