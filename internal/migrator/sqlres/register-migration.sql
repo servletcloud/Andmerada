@@ -1,6 +1,5 @@
-INSERT INTO __table_name__ (
+INSERT INTO _table_name_ (
     id,
-    project,
     name,
     applied_at,
     sql_up,
@@ -12,7 +11,6 @@ INSERT INTO __table_name__ (
     meta
 ) VALUES (
     @id,
-    @project,
     @name,
     @applied_at,
     @sql_up,
@@ -24,7 +22,6 @@ INSERT INTO __table_name__ (
     @meta
 )
 ON CONFLICT (id) DO UPDATE SET
-    project = EXCLUDED.project,
     name = EXCLUDED.name,
     applied_at = EXCLUDED.applied_at,
     sql_up = EXCLUDED.sql_up,

@@ -57,7 +57,7 @@ func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error 
 
 	defer func() { _ = connection.Close(ctx) }()
 
-	ddl := sqlres.DDL(applier.Project.Configuration.TableNames.AppliedMigrations)
+	ddl := sqlres.DDL(applier.migrationsTableName())
 
 	if err := execSimple(ctx, connection.PgConn(), ddl); err != nil {
 		return wrapError(&ExecSQLError{Cause: err, SQL: ddl}, ErrTypeCreateDDL)
@@ -195,7 +195,6 @@ func (applier *Applier) registerMigration(
 
 	args := pgx.NamedArgs{
 		"id":               id,
-		"project":          applier.Project.Configuration.Name,
 		"name":             source.Configuration.Name,
 		"applied_at":       time.Now().UTC(),
 		"sql_up":           source.UpSQL,
@@ -229,5 +228,5 @@ func (applier *Applier) getSortedMigrationIDs(sourceIDToName map[source.Migratio
 }
 
 func (applier *Applier) migrationsTableName() string {
-	return applier.Project.Configuration.TableNames.AppliedMigrations
+	return applier.Project.Configuration.MigrationsTableName
 }

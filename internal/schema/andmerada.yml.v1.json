@@ -2,26 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Project Configuration",
   "type": "object",
-  "required": ["name", "table_names"],
+  "required": ["migrations_table_name"],
   "properties": {
-    "name": {
+    "migrations_table_name": {
       "type": "string",
-      "description": "The name of the project",
+      "description": "The name of the table that stores applied migrations",
       "minLength": 1,
       "maxLength": 255
-    },
-    "table_names": {
-      "type": "object",
-      "description": "Database table names used by Andmerada",
-      "required": ["applied_migrations"],
-      "properties": {
-        "applied_migrations": {
-          "type": "string",
-          "description": "The name of the table that stores applied migrations",
-          "minLength": 1,
-          "maxLength": 255
-        }
-      }
     }
   }
 }
