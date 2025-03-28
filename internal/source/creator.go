@@ -33,12 +33,12 @@ func create(projectDir string, name string, time time.Time) (CreateSourceResult,
 	return CreateSourceResult{BaseDir: baseMigrationDir, FullPath: migrationDir, Latest: latest}, nil
 }
 
-func verifyIDUnique(newID MigrationID, projectDir string) (bool, error) {
+func verifyIDUnique(newID uint64, projectDir string) (bool, error) {
 	unique := true
 	collidesWith := ""
 	latest := true
 
-	err := Scan(projectDir, func(existingID MigrationID, name string) bool {
+	err := Scan(projectDir, func(existingID uint64, name string) bool {
 		if newID == existingID {
 			unique = false
 			collidesWith = name

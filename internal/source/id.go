@@ -11,17 +11,13 @@ const (
 	idFormatTimeYYYYMMDDHHMMSS = "20060102150405"
 )
 
-func (id MigrationID) asUint64() uint64 {
-	return uint64(id)
-}
-
-func newIDFromTime(t time.Time) MigrationID {
+func newIDFromTime(t time.Time) uint64 {
 	timestamp := t.Format(idFormatTimeYYYYMMDDHHMMSS)
 
 	return newIDFromStringUnsafe(timestamp)
 }
 
-func newIDFromString(str string) MigrationID {
+func newIDFromString(str string) uint64 {
 	if len(str) < idLength+1 {
 		return EmptyMigrationID
 	}
@@ -39,11 +35,11 @@ func newIDFromString(str string) MigrationID {
 	return newIDFromStringUnsafe(str[:14])
 }
 
-func newIDFromStringUnsafe(s string) MigrationID {
+func newIDFromStringUnsafe(s string) uint64 {
 	id, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
 		panic(err)
 	}
 
-	return MigrationID(id)
+	return id
 }

@@ -30,11 +30,11 @@ type Applier struct {
 func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error {
 	applier.migrationsRepo = &Migrations{TableName: applier.Project.Configuration.MigrationsTableName}
 
-	sourceIDToName := make(map[source.MigrationID]string)
-	dupeIDToName := make(map[source.MigrationID]string)
-	idMin, idMax := source.MigrationID(math.MaxUint64), source.MigrationID(0)
+	sourceIDToName := make(map[uint64]string)
+	dupeIDToName := make(map[uint64]string)
+	idMin, idMax := uint64(math.MaxUint64), uint64(0)
 
-	err := source.ScanAll(applier.Project.Dir, func(id source.MigrationID, name string) {
+	err := source.ScanAll(applier.Project.Dir, func(id uint64, name string) {
 		if _, found := sourceIDToName[id]; found {
 			dupeIDToName[id] = name
 		} else {
@@ -66,14 +66,14 @@ func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error 
 		return wrapError(&ExecSQLError{Cause: err, SQL: ddl}, ErrTypeCreateDDL)
 	}
 
-	appliedIDs, err := applier.migrationsRepo.ScanApplied(ctx, connection, uint64(idMin), uint64(idMax))
+	appliedIDs, err := applier.migrationsRepo.ScanApplied(ctx, connection, idMin, idMax)
 
 	if err != nil {
 		return wrapError(err, ErrTypeScanAppliedMigrations)
 	}
 
 	for _, id := range appliedIDs {
-		delete(sourceIDToName, source.MigrationID(id))
+		delete(sourceIDToName, id)
 	}
 
 	report.PendingSources = len(sourceIDToName)
@@ -92,8 +92,8 @@ func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error 
 func (applier *Applier) applyAllPending(
 	ctx context.Context,
 	conn *pgx.Conn,
-	sourceIDToName map[source.MigrationID]string,
-	dupeIDToName map[source.MigrationID]string,
+	sourceIDToName map[uint64]string,
+	dupeIDToName map[uint64]string,
 ) error {
 	loader := source.Loader{MaxSQLFileSize: applier.MaxSQLFileSize}
 
@@ -120,7 +120,7 @@ func (applier *Applier) applyAllPending(
 
 		if duration, err := applier.applyMigration(ctx, conn, source.UpSQL, name); err != nil {
 			return wrapError(&ApplyMigrationError{Cause: err, Name: name}, ErrTypeApplyMigration)
-		} else if err := applier.registerMigration(ctx, conn, uint64(id), &source, duration); err != nil {
+		} else if err := applier.registerMigration(ctx, conn, id, &source, duration); err != nil {
 			return wrapError(err, ErrTypeRegisterMigration)
 		}
 	}
@@ -183,7 +183,7 @@ func (applier *Applier) registerMigration(
 	return applier.migrationsRepo.Insert(ctx, conn, migration)
 }
 
-func (applier *Applier) getSortedMigrationIDs(sourceIDToName map[source.MigrationID]string) []source.MigrationID {
+func (applier *Applier) getSortedMigrationIDs(sourceIDToName map[uint64]string) []uint64 {
 	ids := mapKeysToSlice(sourceIDToName)
 
 	slices.Sort(ids)
