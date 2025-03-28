@@ -71,13 +71,13 @@ func TestNewIDFromTime(t *testing.T) {
 	timestamp, err := time.Parse("20060102150405", "20241225112129")
 	require.NoError(t, err)
 
-	assert.Equal(t, source.MigrationID(20241225112129), source.NewIDFromTime(timestamp))
+	assert.Equal(t, uint64(20241225112129), source.NewIDFromTime(timestamp))
 }
 
 func TestNewIDFromString(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, source.MigrationID(20060102150405), source.NewIDFromString("20060102150405_create_users"))
+	assert.Equal(t, uint64(20060102150405), source.NewIDFromString("20060102150405_create_users"))
 	assert.Equal(t, source.EmptyMigrationID, source.NewIDFromString("2006010215040_create_users"))
 	assert.Equal(t, source.EmptyMigrationID, source.NewIDFromString("200601021504056_create_users"))
 	assert.Equal(t, source.EmptyMigrationID, source.NewIDFromString("20060102150405create_users"))
@@ -114,9 +114,9 @@ func TestScan(t *testing.T) { //nolint:funlen
 			require.NoError(t, err)
 		}
 
-		receivedIDs := make([]source.MigrationID, 0)
+		receivedIDs := make([]uint64, 0)
 		receivedNames := make([]string, 0)
-		err := source.Scan(dir, func(id source.MigrationID, name string) bool {
+		err := source.Scan(dir, func(id uint64, name string) bool {
 			receivedIDs = append(receivedIDs, id)
 			receivedNames = append(receivedNames, name)
 
@@ -124,9 +124,9 @@ func TestScan(t *testing.T) { //nolint:funlen
 		})
 		require.NoError(t, err)
 
-		expectedIDs := []source.MigrationID{
-			source.MigrationID(20060102150405),
-			source.MigrationID(20241225112129),
+		expectedIDs := []uint64{
+			20060102150405,
+			20241225112129,
 		}
 		assert.Equal(t, expectedIDs, receivedIDs)
 
@@ -142,7 +142,7 @@ func TestScan(t *testing.T) { //nolint:funlen
 
 		dir := t.TempDir()
 
-		err := source.Scan(dir, func(_ source.MigrationID, _ string) bool {
+		err := source.Scan(dir, func(_ uint64, _ string) bool {
 			assert.Fail(t, "No IDs must be found in an empty directory")
 
 			return true

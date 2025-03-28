@@ -11,8 +11,6 @@ type CreateSourceResult struct {
 	Latest   bool
 }
 
-type MigrationID uint64
-
 type LintError struct {
 	Title string
 	Files []string
@@ -60,7 +58,7 @@ const (
 	UpSQLFilename        = "up.sql"
 	DownSQLFilename      = "down.sql"
 
-	EmptyMigrationID = MigrationID(0)
+	EmptyMigrationID = uint64(0)
 )
 
 var (
@@ -68,11 +66,11 @@ var (
 	ErrSourceAlreadyExists = errors.New("a migration with the same ID already exists")
 )
 
-func NewIDFromTime(t time.Time) MigrationID {
+func NewIDFromTime(t time.Time) uint64 {
 	return newIDFromTime(t)
 }
 
-func NewIDFromString(str string) MigrationID {
+func NewIDFromString(str string) uint64 {
 	return newIDFromString(str)
 }
 
@@ -89,14 +87,14 @@ func Lint(conf LintConfiguration, report *LintReport) error {
 	return linter.lint()
 }
 
-func ScanAll(projectDir string, callback func(id MigrationID, name string)) error {
-	return scan(projectDir, func(id MigrationID, name string) bool {
+func ScanAll(projectDir string, callback func(id uint64, name string)) error {
+	return scan(projectDir, func(id uint64, name string) bool {
 		callback(id, name)
 
 		return true
 	})
 }
 
-func Scan(projectDir string, callback func(id MigrationID, name string) bool) error {
+func Scan(projectDir string, callback func(id uint64, name string) bool) error {
 	return scan(projectDir, callback)
 }

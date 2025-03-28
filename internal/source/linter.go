@@ -26,9 +26,9 @@ func (linter *linter) lint() error {
 	upSQLLinter := linter.newUpSQLLinter()
 	downSQLLinter := linter.newDownSQLLinter()
 
-	return scanAll(linter.ProjectDir, func(id MigrationID, name string) {
-		duplicatesLinter.LintSource(id.asUint64(), name)
-		futureLinter.LintSource(id.asUint64(), name)
+	return scanAll(linter.ProjectDir, func(id uint64, name string) {
+		duplicatesLinter.LintSource(id, name)
+		futureLinter.LintSource(id, name)
 		countLinter.LintSource()
 
 		configuration := new(Configuration)
@@ -75,7 +75,7 @@ func (linter *linter) newDownSQLLinter() linters.SQLLinter {
 func (linter *linter) newFutureLinter() *linters.FutureLinter {
 	return &linters.FutureLinter{
 		Reporter:  linter,
-		Threshold: newIDFromTime(linter.NowUTC).asUint64(),
+		Threshold: newIDFromTime(linter.NowUTC),
 	}
 }
 
