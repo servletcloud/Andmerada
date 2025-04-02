@@ -9,47 +9,27 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/servletcloud/Andmerada/internal/migrator/sqlres"
 	"github.com/servletcloud/Andmerada/internal/project"
 	"github.com/servletcloud/Andmerada/internal/source"
 )
 
 type Report struct {
-	SourcesOnDisk  int
-	PendingSources int
+	PendingCount int
 }
 
 type Applier struct {
 	MaxSQLFileSize int64
 	DatabaseURL    string
 	Project        project.Project
-
-	migrationsRepo *Migrations
 }
 
 func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error {
-	applier.migrationsRepo = &Migrations{TableName: applier.Project.Configuration.MigrationsTableName}
-
-	sourceIDToName := make(map[uint64]string)
-	dupeIDToName := make(map[uint64]string)
-	idMin, idMax := uint64(math.MaxUint64), uint64(0)
-
-	err := source.ScanAll(applier.Project.Dir, func(id uint64, name string) {
-		if _, found := sourceIDToName[id]; found {
-			dupeIDToName[id] = name
-		} else {
-			sourceIDToName[id] = name
-			idMin, idMax = min(idMin, id), max(idMax, id)
-		}
-	})
-
+	sources, err := applier.scanAvailableMigrations()
 	if err != nil {
-		return wrapError(err, ErrTypeListMigrationsOnDisk)
+		return err
 	}
 
-	report.SourcesOnDisk = len(sourceIDToName)
-
-	if report.SourcesOnDisk == 0 {
+	if len(sources) == 0 {
 		return nil
 	}
 
@@ -60,55 +40,76 @@ func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error 
 
 	defer func() { _ = connection.Close(ctx) }()
 
-	ddl := sqlres.DDL(applier.Project.Configuration.MigrationsTableName)
-
-	if err := execSimple(ctx, connection.PgConn(), ddl); err != nil {
-		return wrapError(&ExecSQLError{Cause: err, SQL: ddl}, ErrTypeCreateDDL)
+	if err := applier.runDDL(ctx, connection); err != nil {
+		return err
 	}
 
-	appliedIDs, err := applier.migrationsRepo.ScanApplied(ctx, connection, idMin, idMax)
-
+	appliedIDs, err := applier.scanAppliedMigrations(ctx, connection, sources)
 	if err != nil {
-		return wrapError(err, ErrTypeScanAppliedMigrations)
+		return err
 	}
 
-	for _, id := range appliedIDs {
-		delete(sourceIDToName, id)
-	}
+	deleteAllKeys(sources, appliedIDs)
 
-	report.PendingSources = len(sourceIDToName)
+	report.PendingCount = len(sources)
 
-	if report.PendingSources == 0 {
+	if report.PendingCount == 0 {
 		return nil
 	}
 
-	if err = applier.applyAllPending(ctx, connection, sourceIDToName, dupeIDToName); err != nil {
-		return err
+	return applier.applyAll(ctx, connection, sources)
+}
+
+func (applier *Applier) scanAvailableMigrations() (map[uint64]string, error) {
+	sources, err := source.ScanAll(applier.Project.Dir)
+	if err != nil {
+		return nil, wrapError(err, ErrTypeListMigrationsOnDisk)
+	}
+
+	return sources, nil
+}
+
+func (applier *Applier) runDDL(ctx context.Context, conn *pgx.Conn) error {
+	migrationsRepo := Migrations{TableName: applier.Project.Configuration.MigrationsTableName}
+
+	if err := migrationsRepo.RunDDL(ctx, conn); err != nil {
+		return wrapError(err, ErrTypeCreateDDL)
 	}
 
 	return nil
 }
 
-func (applier *Applier) applyAllPending(
+func (applier *Applier) scanAppliedMigrations(
 	ctx context.Context,
 	conn *pgx.Conn,
-	sourceIDToName map[uint64]string,
-	dupeIDToName map[uint64]string,
+	sources map[uint64]string,
+) ([]uint64, error) {
+	idMin, idMax := uint64(math.MaxUint64), uint64(0)
+
+	for id := range sources {
+		idMin = min(idMin, id)
+		idMax = max(idMax, id)
+	}
+
+	migrationsRepo := &Migrations{TableName: applier.Project.Configuration.MigrationsTableName}
+	ids, err := migrationsRepo.ScanApplied(ctx, conn, idMin, idMax)
+
+	if err != nil {
+		return nil, wrapError(err, ErrTypeScanAppliedMigrations)
+	}
+
+	return ids, nil
+}
+
+func (applier *Applier) applyAll(
+	ctx context.Context,
+	conn *pgx.Conn,
+	sources map[uint64]string,
 ) error {
 	loader := source.Loader{MaxSQLFileSize: applier.MaxSQLFileSize}
 
-	for _, id := range applier.getSortedMigrationIDs(sourceIDToName) {
-		name := sourceIDToName[id]
-		dupeName, hasDuplicate := dupeIDToName[id]
-
-		if hasDuplicate {
-			err := &ApplyMigrationError{
-				Cause: &DuplicateMigrationError{Paths: []string{name, dupeName}},
-				Name:  name,
-			}
-
-			return wrapError(err, ErrTypeApplyMigration)
-		}
+	for _, id := range applier.getSortedMigrationIDs(sources) {
+		name := sources[id]
 
 		sourceDir := filepath.Join(applier.Project.Dir, name)
 
@@ -180,7 +181,9 @@ func (applier *Applier) registerMigration(
 		Meta:            source.Configuration.Meta,
 	}
 
-	return applier.migrationsRepo.Insert(ctx, conn, migration)
+	migrationsRepo := &Migrations{TableName: applier.Project.Configuration.MigrationsTableName}
+
+	return migrationsRepo.Insert(ctx, conn, migration)
 }
 
 func (applier *Applier) getSortedMigrationIDs(sourceIDToName map[uint64]string) []uint64 {

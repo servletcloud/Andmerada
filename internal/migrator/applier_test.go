@@ -51,7 +51,7 @@ func TestApplyPending(t *testing.T) {
 
 		t.Run("Report has zero migrations", func(t *testing.T) {
 			mustApplyPending(t)
-			assert.Equal(t, 0, report.SourcesOnDisk)
+			assert.Equal(t, 0, report.PendingCount)
 		})
 	})
 
@@ -78,8 +78,7 @@ func TestApplyPending(t *testing.T) {
 			tests.AssertPgTableExist(ctx, t, conn, "migrations")
 			tests.AssertPgTableExist(ctx, t, conn, "users")
 
-			assert.Equal(t, 3, report.SourcesOnDisk)
-			assert.Equal(t, 3, report.PendingSources)
+			assert.Equal(t, 3, report.PendingCount)
 		})
 
 		t.Run("Insert into a newly create table succeeds", func(t *testing.T) {
@@ -93,8 +92,7 @@ func TestApplyPending(t *testing.T) {
 
 			mustApplyPending(t)
 
-			assert.Equal(t, 3, report.SourcesOnDisk)
-			assert.Equal(t, 0, report.PendingSources)
+			assert.Equal(t, 0, report.PendingCount)
 		})
 
 		t.Run("Fails to apply a not committed migration", func(t *testing.T) {
@@ -109,7 +107,7 @@ func TestApplyPending(t *testing.T) {
 			tests.AssertPgTableNotExist(ctx, t, conn, "sessions")
 		})
 
-		t.Run("Failed to apply a duplicate migration", func(t *testing.T) {
+		t.Run("Failed all migrations because of a duplicate migration", func(t *testing.T) {
 			sql := "CREATE TABLE sessions (id SERIAL PRIMARY KEY, user_id INTEGER);"
 			createMigration(t, "Create session table", "20250101101523", sql)
 
@@ -118,10 +116,10 @@ func TestApplyPending(t *testing.T) {
 
 			err := applier.ApplyPending(ctx, &report)
 
-			tests.AssertPgTableExist(ctx, t, conn, "sessions")
+			tests.AssertPgTableNotExist(ctx, t, conn, "sessions")
 			tests.AssertPgTableNotExist(ctx, t, conn, "dummy")
 
-			var dupErr *migrator.DuplicateMigrationError
+			var dupErr *source.DuplicateSourceError
 
 			require.ErrorAs(t, err, &dupErr)
 

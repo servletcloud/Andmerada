@@ -57,7 +57,7 @@ func (m *migrateCmdRunner) Run(cmd *cobra.Command) {
 		Project:        mustLoadProject(osutil.GetwdOrPanic()),
 		DatabaseURL:    databaseURL,
 	}
-	report := migrator.Report{SourcesOnDisk: 0, PendingSources: 0}
+	report := migrator.Report{PendingCount: 0}
 
 	if err := applier.ApplyPending(cmd.Context(), &report); err != nil {
 		m.printError(err)
@@ -152,8 +152,8 @@ func (m *migrateCmdRunner) pgErrorToPrettyString(err error) string {
 }
 
 func (m *migrateCmdRunner) printReport(report *migrator.Report) {
-	if report.SourcesOnDisk == 0 {
+	if report.PendingCount == 0 {
 		help := `andmerada create-migration "Add users table"`
-		log.Println("No migration files found. To create one, run:\n" + help)
+		log.Println("No migrations to apply. To add one, run:\n" + help)
 	}
 }

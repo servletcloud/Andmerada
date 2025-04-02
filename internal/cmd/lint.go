@@ -88,7 +88,8 @@ func printLintReport(report *source.LintReport) {
 	log.Printf(" Summary: Critical Errors: %d, Warnings: %d", criticalCount, warningCount)
 
 	if criticalCount > 0 {
-		log.Println("  ⚠️ Critical errors detected. 'andmerada migrate' will fail to run these migrations.")
+		msg := "  ⚠️ Critical errors detected. 'andmerada migrate' will fail to apply migrations to the database."
+		log.Println(msg)
 	}
 }
 

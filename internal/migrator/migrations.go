@@ -26,6 +26,16 @@ type Migrations struct {
 	TableName string
 }
 
+func (m *Migrations) RunDDL(ctx context.Context, conn *pgx.Conn) error {
+	ddl := sqlres.DDL(m.TableName)
+
+	if err := execSimple(ctx, conn.PgConn(), ddl); err != nil {
+		return &ExecSQLError{Cause: err, SQL: ddl}
+	}
+
+	return nil
+}
+
 func (m *Migrations) ScanApplied(
 	ctx context.Context,
 	conn *pgx.Conn,
