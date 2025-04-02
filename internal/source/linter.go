@@ -26,7 +26,7 @@ func (linter *linter) lint() error {
 	upSQLLinter := linter.newUpSQLLinter()
 	downSQLLinter := linter.newDownSQLLinter()
 
-	return scanAll(linter.ProjectDir, func(id uint64, name string) {
+	return TraverseAll(linter.ProjectDir, func(id uint64, name string) {
 		duplicatesLinter.LintSource(id, name)
 		futureLinter.LintSource(id, name)
 		countLinter.LintSource()

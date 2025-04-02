@@ -8,6 +8,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func MkFile(t *testing.T, path string, content string) {
+	t.Helper()
+
+	t.Cleanup(func() {
+		err := os.Remove(path)
+		require.NoError(t, err)
+	})
+
+	err := osutil.WriteFileExcl(path, content)
+	require.NoError(t, err)
+}
+
 func MkDir(t *testing.T, path string) {
 	t.Helper()
 

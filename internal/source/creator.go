@@ -38,7 +38,7 @@ func verifyIDUnique(newID uint64, projectDir string) (bool, error) {
 	collidesWith := ""
 	latest := true
 
-	err := Scan(projectDir, func(existingID uint64, name string) bool {
+	err := Traverse(projectDir, func(existingID uint64, name string) bool {
 		if newID == existingID {
 			unique = false
 			collidesWith = name

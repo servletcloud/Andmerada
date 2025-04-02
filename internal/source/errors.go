@@ -27,3 +27,12 @@ type CannotBeDirError struct {
 func (e *CannotBeDirError) Error() string {
 	return fmt.Sprintf("File %q must be a file, but is a directory", e.Name)
 }
+
+type DuplicateSourceError struct {
+	Dir   string
+	Paths []string
+}
+
+func (e *DuplicateSourceError) Error() string {
+	return fmt.Sprintf("duplicate migrations: %v", e.Paths)
+}

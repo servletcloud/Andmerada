@@ -65,3 +65,9 @@ func mapKeysToSlice[K comparable, V any](m map[K]V) []K {
 
 	return keys
 }
+
+func deleteAllKeys[K comparable, V any](m map[K]V, keys []K) {
+	for _, k := range keys {
+		delete(m, k)
+	}
+}

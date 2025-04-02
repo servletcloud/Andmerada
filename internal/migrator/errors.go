@@ -2,7 +2,6 @@ package migrator
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 )
 
@@ -51,14 +50,6 @@ func (e *ExecSQLError) Error() string {
 
 func (e *ExecSQLError) Unwrap() error {
 	return e.Cause
-}
-
-type DuplicateMigrationError struct {
-	Paths []string
-}
-
-func (e *DuplicateMigrationError) Error() string {
-	return fmt.Sprintf("duplicate migrations: %v", e.Paths)
 }
 
 type ApplyMigrationError struct {
