@@ -22,9 +22,9 @@ func TestApplyPending(t *testing.T) {
 	connectionURL := tests.StartEmbeddedPostgres(t)
 	conn := tests.OpenPgConnection(t, connectionURL)
 	dir := t.TempDir()
-	report := migrator.Report{} //nolint:exhaustruct
+	report := migrator.Report{PendingCount: 0}
 
-	applier := &migrator.Applier{
+	options := migrator.ApplyOptions{
 		MaxSQLFileSize: 1024,
 		Project: project.Project{
 			Dir:           dir,
@@ -36,7 +36,7 @@ func TestApplyPending(t *testing.T) {
 	mustApplyPending := func(t *testing.T) {
 		t.Helper()
 
-		err := applier.ApplyPending(ctx, &report)
+		err := migrator.ApplyPending(ctx, options, &report)
 		require.NoError(t, err)
 	}
 
@@ -99,7 +99,7 @@ func TestApplyPending(t *testing.T) {
 			sql := "BEGIN; CREATE TABLE sessions (id SERIAL PRIMARY KEY, user_id INTEGER);"
 			createMigration(t, "Create session table", "20250101101523", sql)
 
-			err := applier.ApplyPending(ctx, &report)
+			err := migrator.ApplyPending(ctx, options, &report)
 
 			var notCommittedErr *migrator.TransactionNotCommittedError
 
@@ -114,7 +114,7 @@ func TestApplyPending(t *testing.T) {
 			result := createMigration(t, "Some dummy migtation", "20250101101524", "CREATE TABLE dummy(id INTEGER);")
 			tests.MkDir(t, result.FullPath+"_dupe")
 
-			err := applier.ApplyPending(ctx, &report)
+			err := migrator.ApplyPending(ctx, options, &report)
 
 			tests.AssertPgTableNotExist(ctx, t, conn, "sessions")
 			tests.AssertPgTableNotExist(ctx, t, conn, "dummy")
@@ -129,7 +129,7 @@ func TestApplyPending(t *testing.T) {
 		t.Run("Populates columns of migrations table", func(t *testing.T) {
 			createMigration(t, "Dummy migration", "20250109025508", "SELECT 1;")
 
-			err := applier.ApplyPending(ctx, &report)
+			err := migrator.ApplyPending(ctx, options, &report)
 			require.NoError(t, err)
 
 			t.Run("Populates id,name,applied_at columns", func(t *testing.T) {

@@ -17,73 +17,79 @@ type Report struct {
 	PendingCount int
 }
 
-type Applier struct {
+type ApplyOptions struct {
 	MaxSQLFileSize int64
 	DatabaseURL    string
 	Project        project.Project
 }
 
-func (applier *Applier) ApplyPending(ctx context.Context, report *Report) error {
-	sources, err := applier.scanAvailableMigrations()
+type applier struct {
+	maxSQLFileSize  int64
+	databaseURL     string
+	projectDir      string
+	migrationsTable string
+
+	report         *Report
+	migrationsRepo *Migrations
+	connection     *pgx.Conn
+}
+
+func ApplyPending(ctx context.Context, options ApplyOptions, report *Report) error {
+	projectConfiguration := options.Project.Configuration
+	migrationsTable := projectConfiguration.MigrationsTableName
+
+	report.PendingCount = 0
+
+	applier := &applier{
+		maxSQLFileSize:  options.MaxSQLFileSize,
+		databaseURL:     options.DatabaseURL,
+		projectDir:      options.Project.Dir,
+		report:          report,
+		migrationsTable: migrationsTable,
+		migrationsRepo:  &Migrations{TableName: migrationsTable},
+		connection:      nil,
+	}
+
+	defer applier.close(ctx)
+
+	return applier.applyPending(ctx)
+}
+
+func (applier *applier) applyPending(ctx context.Context) error {
+	sources, err := source.ScanAll(applier.projectDir)
 	if err != nil {
-		return err
+		return wrapError(err, ErrTypeListMigrationsOnDisk)
 	}
 
 	if len(sources) == 0 {
 		return nil
 	}
 
-	connection, err := pgx.Connect(ctx, applier.DatabaseURL)
-	if err != nil {
+	if err := applier.connect(ctx); err != nil {
 		return wrapError(err, ErrTypeDBConnect)
 	}
 
-	defer func() { _ = connection.Close(ctx) }()
-
-	if err := applier.runDDL(ctx, connection); err != nil {
-		return err
+	if err := applier.migrationsRepo.RunDDL(ctx, applier.connection); err != nil {
+		return wrapError(err, ErrTypeCreateDDL)
 	}
 
-	appliedIDs, err := applier.scanAppliedMigrations(ctx, connection, sources)
+	appliedIDs, err := applier.scanAppliedMigrations(ctx, sources)
 	if err != nil {
-		return err
+		return wrapError(err, ErrTypeScanAppliedMigrations)
 	}
 
 	deleteAllKeys(sources, appliedIDs)
 
-	report.PendingCount = len(sources)
-
-	if report.PendingCount == 0 {
+	if len(sources) == 0 {
 		return nil
 	}
 
-	return applier.applyAll(ctx, connection, sources)
+	applier.report.PendingCount = len(sources)
+
+	return applier.applyAll(ctx, sources)
 }
 
-func (applier *Applier) scanAvailableMigrations() (map[uint64]string, error) {
-	sources, err := source.ScanAll(applier.Project.Dir)
-	if err != nil {
-		return nil, wrapError(err, ErrTypeListMigrationsOnDisk)
-	}
-
-	return sources, nil
-}
-
-func (applier *Applier) runDDL(ctx context.Context, conn *pgx.Conn) error {
-	migrationsRepo := Migrations{TableName: applier.Project.Configuration.MigrationsTableName}
-
-	if err := migrationsRepo.RunDDL(ctx, conn); err != nil {
-		return wrapError(err, ErrTypeCreateDDL)
-	}
-
-	return nil
-}
-
-func (applier *Applier) scanAppliedMigrations(
-	ctx context.Context,
-	conn *pgx.Conn,
-	sources map[uint64]string,
-) ([]uint64, error) {
+func (applier *applier) scanAppliedMigrations(ctx context.Context, sources map[uint64]string) ([]uint64, error) {
 	idMin, idMax := uint64(math.MaxUint64), uint64(0)
 
 	for id := range sources {
@@ -91,27 +97,25 @@ func (applier *Applier) scanAppliedMigrations(
 		idMax = max(idMax, id)
 	}
 
-	migrationsRepo := &Migrations{TableName: applier.Project.Configuration.MigrationsTableName}
-	ids, err := migrationsRepo.ScanApplied(ctx, conn, idMin, idMax)
+	ids, err := applier.migrationsRepo.ScanApplied(ctx, applier.connection, idMin, idMax)
 
 	if err != nil {
-		return nil, wrapError(err, ErrTypeScanAppliedMigrations)
+		return nil, err
 	}
 
 	return ids, nil
 }
 
-func (applier *Applier) applyAll(
-	ctx context.Context,
-	conn *pgx.Conn,
-	sources map[uint64]string,
-) error {
-	loader := source.Loader{MaxSQLFileSize: applier.MaxSQLFileSize}
+func (applier *applier) applyAll(ctx context.Context, sources map[uint64]string) error {
+	loader := source.Loader{MaxSQLFileSize: applier.maxSQLFileSize}
+	ids := mapKeysToSlice(sources)
 
-	for _, id := range applier.getSortedMigrationIDs(sources) {
+	slices.Sort(ids)
+
+	for _, id := range ids {
 		name := sources[id]
 
-		sourceDir := filepath.Join(applier.Project.Dir, name)
+		sourceDir := filepath.Join(applier.projectDir, name)
 
 		source, err := loader.LoadSource(sourceDir)
 
@@ -119,9 +123,9 @@ func (applier *Applier) applyAll(
 			return wrapError(&ApplyMigrationError{Cause: err, Name: name}, ErrTypeApplyMigration)
 		}
 
-		if duration, err := applier.applyMigration(ctx, conn, source.UpSQL, name); err != nil {
+		if duration, err := applier.applyMigration(ctx, source.UpSQL, name); err != nil {
 			return wrapError(&ApplyMigrationError{Cause: err, Name: name}, ErrTypeApplyMigration)
-		} else if err := applier.registerMigration(ctx, conn, id, &source, duration); err != nil {
+		} else if err := applier.registerMigration(ctx, id, &source, duration); err != nil {
 			return wrapError(err, ErrTypeRegisterMigration)
 		}
 	}
@@ -129,28 +133,13 @@ func (applier *Applier) applyAll(
 	return nil
 }
 
-func (applier *Applier) applyMigration(
-	ctx context.Context,
-	conn *pgx.Conn,
-	sql string,
-	name string,
-) (time.Duration, error) {
+func (applier *applier) applyMigration(ctx context.Context, sql string, name string) (time.Duration, error) {
 	startTime := time.Now()
 
 	log.Printf("Applying %q,please wait...", name)
 
-	if isConnectionInTransaction(conn.PgConn()) {
-		panic("the connection is not allowed to be in an active transaction")
-	}
-
-	if err := execSimple(ctx, conn.PgConn(), sql); err != nil {
-		return 0, &ExecSQLError{Cause: err, SQL: sql}
-	}
-
-	if isConnectionInTransaction(conn.PgConn()) {
-		err := execSimple(ctx, conn.PgConn(), "ROLLBACK;")
-
-		return 0, &TransactionNotCommittedError{RollBackError: err}
+	if err := applier.executeMigrationSQL(ctx, sql); err != nil {
+		return 0, err
 	}
 
 	duration := time.Since(startTime)
@@ -161,9 +150,28 @@ func (applier *Applier) applyMigration(
 	return duration, nil
 }
 
-func (applier *Applier) registerMigration(
+func (applier *applier) executeMigrationSQL(ctx context.Context, sql string) error {
+	pgConn := applier.connection.PgConn()
+
+	if isConnectionInTransaction(pgConn) {
+		panic("the connection is not allowed to be in an active transaction")
+	}
+
+	if err := execSimple(ctx, pgConn, sql); err != nil {
+		return &ExecSQLError{Cause: err, SQL: sql}
+	}
+
+	if isConnectionInTransaction(pgConn) {
+		err := execSimple(ctx, pgConn, "ROLLBACK;")
+
+		return &TransactionNotCommittedError{RollBackError: err}
+	}
+
+	return nil
+}
+
+func (applier *applier) registerMigration(
 	ctx context.Context,
-	conn *pgx.Conn,
 	id uint64,
 	source *source.Source,
 	duration time.Duration,
@@ -181,15 +189,33 @@ func (applier *Applier) registerMigration(
 		Meta:            source.Configuration.Meta,
 	}
 
-	migrationsRepo := &Migrations{TableName: applier.Project.Configuration.MigrationsTableName}
-
-	return migrationsRepo.Insert(ctx, conn, migration)
+	return applier.migrationsRepo.Insert(ctx, applier.connection, migration)
 }
 
-func (applier *Applier) getSortedMigrationIDs(sourceIDToName map[uint64]string) []uint64 {
-	ids := mapKeysToSlice(sourceIDToName)
+func (applier *applier) connect(ctx context.Context) error {
+	applier.connection = nil
 
-	slices.Sort(ids)
+	connection, err := pgx.Connect(ctx, applier.databaseURL)
 
-	return ids
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+
+	applier.connection = connection
+
+	return nil
+}
+
+func (applier *applier) close(ctx context.Context) error {
+	if applier.connection == nil {
+		return nil
+	}
+
+	err := applier.connection.Close(ctx)
+
+	if err != nil {
+		log.Println("Failed to close the database connection:", err)
+	}
+
+	return err //nolint:wrapcheck
 }

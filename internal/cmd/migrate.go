@@ -52,14 +52,16 @@ func (m *migrateCmdRunner) Run(cmd *cobra.Command) {
 			"using the --database-url flag.")
 	}
 
-	applier := &migrator.Applier{
+	project := mustLoadProject(osutil.GetwdOrPanic())
+
+	options := migrator.ApplyOptions{
 		MaxSQLFileSize: MaxSQLFileSizeBytes,
-		Project:        mustLoadProject(osutil.GetwdOrPanic()),
 		DatabaseURL:    databaseURL,
+		Project:        project,
 	}
 	report := migrator.Report{PendingCount: 0}
 
-	if err := applier.ApplyPending(cmd.Context(), &report); err != nil {
+	if err := migrator.ApplyPending(cmd.Context(), options, &report); err != nil {
 		m.printError(err)
 	} else {
 		m.printReport(&report)
