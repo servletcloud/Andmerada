@@ -184,6 +184,30 @@ func TestApplyPending(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("Pre-validation fails", func(t *testing.T) {
+		source1 := tests.CreateSource(t, dir, "Valid migration", "20250109025508")
+		source2 := tests.CreateSource(t, dir, "Valid migration", "20250109025509")
+
+		writeUpSQL(t, source1.FullPath, "CREATE TABLE pre_validation (id INTEGER);")
+
+		err := os.Remove(filepath.Join(source2.FullPath, source.UpSQLFilename))
+		require.NoError(t, err)
+
+		err = migrator.ApplyPending(ctx, options, &report)
+
+		var applierErr *migrator.MigrateError
+
+		require.ErrorAs(t, err, &applierErr)
+		assert.Equal(t, migrator.ErrTypePreValidateSources, applierErr.ErrType)
+
+		var loadSourceErr *migrator.LoadSourceError
+
+		require.ErrorAs(t, err, &loadSourceErr)
+		assert.Equal(t, source2.BaseDir, loadSourceErr.Name)
+
+		tests.AssertPgTableNotExist(ctx, t, conn, "pre_validation")
+	})
 }
 
 func createProjectConfig() project.Configuration {

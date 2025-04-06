@@ -90,8 +90,14 @@ func (m *migrateCmdRunner) printError(err error) { //nolint:cyclop
 		log.Printf("Failed to list migrations on disk:\n%v", migratorErr)
 	case migrator.ErrTypeScanAppliedMigrations:
 		log.Printf("Failed to scan applied migrations:\n%v", m.pgErrorToPrettyString(migratorErr))
+	case migrator.ErrTypePreValidateSources:
+		m.printLoadSourceError(migratorErr)
+		log.Println("No migrations will be applied.")
+		log.Println("Fix the error and run 'andmerada migrate' again.")
 	case migrator.ErrTypeLoadMigration:
 		m.printLoadSourceError(migratorErr)
+		log.Println("This and all subsequent migrations will not be applied.")
+		log.Println("Fix the error and run 'andmerada migrate' again.")
 	case migrator.ErrTypeApplyMigration:
 		m.printApplyError(migratorErr)
 	case migrator.ErrTypeRegisterMigration:
@@ -136,11 +142,11 @@ func (m *migrateCmdRunner) printLoadSourceError(err *migrator.MigrateError) {
 
 	if errors.As(err, &loadSourceErr) {
 		log.Printf("Failed to load or parse migration from disk %q:\n%v", loadSourceErr.Name, err)
-		log.Println("This and all subsequent migrations will not be applied.")
-		log.Println("Fix the error and run 'andmerada migrate' again.")
 	} else {
 		log.Println(err.Error())
 	}
+
+	log.Println()
 }
 
 func (m *migrateCmdRunner) printApplyError(err *migrator.MigrateError) {

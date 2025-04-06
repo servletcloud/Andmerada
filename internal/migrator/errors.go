@@ -11,6 +11,7 @@ const (
 	ErrTypeDBConnect ErrType = iota
 	ErrTypeCreateDDL
 	ErrTypeListMigrationsOnDisk
+	ErrTypePreValidateSources
 	ErrTypeScanAppliedMigrations
 	ErrTypeLoadMigration
 	ErrTypeApplyMigration

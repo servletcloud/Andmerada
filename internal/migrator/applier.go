@@ -95,6 +95,10 @@ func (applier *applier) applyPending(ctx context.Context) error {
 	sourceRefs := applier.toSortedSourceRefs(sourceIDToName)
 	applier.report.PendingCount = len(sourceRefs)
 
+	if err := applier.preValidateSources(sourceRefs); err != nil {
+		return wrapError(err, ErrTypePreValidateSources)
+	}
+
 	return applier.applyAll(ctx, sourceRefs)
 }
 
@@ -121,6 +125,18 @@ func (applier *applier) toSortedSourceRefs(sources map[uint64]string) []sourceRe
 	})
 
 	return result
+}
+
+func (applier *applier) preValidateSources(sourceRefs []sourceRef) error {
+	source := source.Source{} //nolint:exhaustruct
+
+	for _, ref := range sourceRefs {
+		if err := applier.loader.ValidateSource(filepath.Join(applier.projectDir, ref.name), &source); err != nil {
+			return &LoadSourceError{Cause: err, Name: ref.name}
+		}
+	}
+
+	return nil
 }
 
 func (applier *applier) applyAll(ctx context.Context, sourceRefs []sourceRef) error {
@@ -156,7 +172,7 @@ func (applier *applier) loadSource(ref sourceRef, out *source.Source) error {
 func (applier *applier) applyMigration(ctx context.Context, sql string, ref sourceRef) (time.Duration, error) {
 	startTime := time.Now()
 
-	log.Printf("Applying %q,please wait...", ref.name)
+	log.Printf("Applying %q, please wait...", ref.name)
 
 	if err := applier.executeMigrationSQL(ctx, sql); err != nil {
 		return 0, err
