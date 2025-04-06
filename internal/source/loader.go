@@ -1,7 +1,6 @@
 package source
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,36 +13,34 @@ type Loader struct {
 	MaxSQLFileSize int64
 }
 
+type readFileFunc func(string) ([]byte, error)
+
 func (loader *Loader) LoadSource(dir string, out *Source) error {
-	var configuration Configuration
+	return loader.loadSource(dir, out, os.ReadFile)
+}
 
-	if err := loader.loadConfiguration(dir, &configuration); err != nil {
-		return err
-	}
-
-	upSQLPath := filepath.Join(dir, configuration.Up.File)
-	upSQL, err := loader.loadSQLFile(upSQLPath)
-
-	if err != nil {
-		return err
-	}
-
-	downSQL := ""
-
-	if !configuration.Down.Block {
-		downSQLPath := filepath.Join(dir, configuration.Down.File)
-		downSQL, err = loader.loadSQLFile(downSQLPath)
+func (loader *Loader) ValidateSource(dir string, out *Source) error {
+	ensureFileRedable := func(path string) error {
+		file, err := os.Open(path)
 
 		if err != nil {
-			return err
+			return fmt.Errorf("file %q referenced by migration.yml cannot be read: %w", path, err)
 		}
+
+		return file.Close()
 	}
 
-	out.Configuration = configuration
-	out.UpSQL = upSQL
-	out.DownSQL = downSQL
+	return loader.loadSource(dir, out, func(path string) ([]byte, error) {
+		return []byte{}, ensureFileRedable(path)
+	})
+}
 
-	return nil
+func (loader *Loader) loadSource(dir string, out *Source, readFunc readFileFunc) error {
+	if err := loader.loadConfiguration(dir, &out.Configuration); err != nil {
+		return err
+	}
+
+	return loader.loadSQLFiles(dir, out, readFunc)
 }
 
 func (loader *Loader) loadConfiguration(dir string, out *Configuration) error {
@@ -53,15 +50,32 @@ func (loader *Loader) loadConfiguration(dir string, out *Configuration) error {
 	return ymlutil.LoadFromFile(path, schema, out) //nolint:wrapcheck
 }
 
-func (loader *Loader) loadSQLFile(path string) (string, error) {
+func (loader *Loader) loadSQLFiles(dir string, out *Source, readFunc readFileFunc) error {
+	config := out.Configuration
+
+	upSQL, err := loader.loadSQLFile(dir, config.Up.File, readFunc)
+
+	if err != nil {
+		return err
+	}
+
+	out.UpSQL = upSQL
+
+	if config.Down.Block {
+		return nil
+	}
+
+	out.DownSQL, err = loader.loadSQLFile(dir, config.Down.File, readFunc)
+
+	return err
+}
+
+func (loader *Loader) loadSQLFile(dir, file string, readFunc readFileFunc) (string, error) {
+	path := filepath.Join(dir, file)
 	stat, err := os.Stat(path)
 
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return "", err //nolint:wrapcheck
-		}
-
-		return "", fmt.Errorf("file %q referenced by migration.yml cannot be read: %w", path, err)
+		return "", err //nolint:wrapcheck
 	}
 
 	if stat.IsDir() {
@@ -72,7 +86,7 @@ func (loader *Loader) loadSQLFile(path string) (string, error) {
 		return "", &FileTooBigError{Name: path, Size: stat.Size(), Limit: loader.MaxSQLFileSize}
 	}
 
-	content, err := os.ReadFile(path)
+	content, err := readFunc(path)
 
 	return string(content), err
 }

@@ -38,3 +38,24 @@ func TestLoadSource(t *testing.T) {
 		assert.False(t, config.Down.Block)
 	})
 }
+
+func TestLoadSource_ValidateSource(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	loader := source.Loader{MaxSQLFileSize: 1024}
+	createdSource := tests.CreateSource(t, dir, "Cr table", "20241225112129")
+	sourceDir := createdSource.FullPath
+
+	t.Run("Test validates source", func(t *testing.T) {
+		t.Parallel()
+
+		src := source.Source{} //nolint:exhaustruct
+		err := loader.ValidateSource(sourceDir, &src)
+		require.NoError(t, err)
+
+		assert.Empty(t, src.UpSQL)
+		assert.Empty(t, src.DownSQL)
+	})
+}
