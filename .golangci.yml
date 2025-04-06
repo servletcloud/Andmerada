@@ -22,46 +22,46 @@ linters-settings:
         allow:
           - bufio
           - bytes
+          - cmp
           - context
           - crypto/sha256
-          - log
-          - os
-          - fmt
-          - strings
-          - unicode
-          - errors
-          - encoding/hex
-          - path/filepath
           - embed
-          - math
-          - net
-          - net/url
-          - io
-          - time
-          - strconv
-          - slices
-          - sort
-          - regexp
+          - encoding/hex
           - encoding/json
-          - testing
-          - iter
-          - maps
-          - cmp
-          - gopkg.in/yaml.v3
-          - github.com/spf13/cobra
+          - errors
+          - fmt
           - github.com/dustin/go-humanize
-          - github.com/jackc/pgx/v5
-          - github.com/jackc/pgerrcode
-          - github.com/xeipuuv/gojsonschema
           - github.com/fergusstrange/embedded-postgres
+          - github.com/jackc/pgerrcode
+          - github.com/jackc/pgx/v5
+          - github.com/servletcloud/Andmerada/internal/cmd
           - github.com/servletcloud/Andmerada/internal/migrator
           - github.com/servletcloud/Andmerada/internal/osutil
           - github.com/servletcloud/Andmerada/internal/project
-          - github.com/servletcloud/Andmerada/internal/cmd
           - github.com/servletcloud/Andmerada/internal/resources
           - github.com/servletcloud/Andmerada/internal/schema
-          - github.com/stretchr/testify/assert
-          - github.com/stretchr/testify/require
           - github.com/servletcloud/Andmerada/internal/source
           - github.com/servletcloud/Andmerada/internal/tests
           - github.com/servletcloud/Andmerada/internal/ymlutil
+          - github.com/spf13/cobra
+          - github.com/stretchr/testify/assert
+          - github.com/stretchr/testify/require
+          - github.com/xeipuuv/gojsonschema
+          - gopkg.in/yaml.v3
+          - io
+          - iter
+          - log
+          - maps
+          - math
+          - net
+          - net/url
+          - os
+          - path/filepath
+          - regexp
+          - slices
+          - sort
+          - strconv
+          - strings
+          - testing
+          - time
+          - unicode
