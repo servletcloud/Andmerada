@@ -1,8 +1,11 @@
 package migrator
 
 import (
+	"cmp"
 	"context"
+	"iter"
 	"log"
+	"maps"
 	"math"
 	"path/filepath"
 	"slices"
@@ -31,7 +34,13 @@ type applier struct {
 
 	report         *Report
 	migrationsRepo *Migrations
+	loader         source.Loader
 	connection     *pgx.Conn
+}
+
+type sourceRef struct {
+	id   uint64
+	name string
 }
 
 func ApplyPending(ctx context.Context, options ApplyOptions, report *Report) error {
@@ -47,6 +56,7 @@ func ApplyPending(ctx context.Context, options ApplyOptions, report *Report) err
 		report:          report,
 		migrationsTable: migrationsTable,
 		migrationsRepo:  &Migrations{TableName: migrationsTable},
+		loader:          source.Loader{MaxSQLFileSize: options.MaxSQLFileSize},
 		connection:      nil,
 	}
 
@@ -56,12 +66,12 @@ func ApplyPending(ctx context.Context, options ApplyOptions, report *Report) err
 }
 
 func (applier *applier) applyPending(ctx context.Context) error {
-	sources, err := source.ScanAll(applier.projectDir)
+	sourceIDToName, err := source.ScanAll(applier.projectDir)
 	if err != nil {
 		return wrapError(err, ErrTypeListMigrationsOnDisk)
 	}
 
-	if len(sources) == 0 {
+	if len(sourceIDToName) == 0 {
 		return nil
 	}
 
@@ -73,59 +83,59 @@ func (applier *applier) applyPending(ctx context.Context) error {
 		return wrapError(err, ErrTypeCreateDDL)
 	}
 
-	appliedIDs, err := applier.scanAppliedMigrations(ctx, sources)
+	appliedIDs, err := applier.scanAppliedMigrations(ctx, maps.Keys(sourceIDToName))
 	if err != nil {
 		return wrapError(err, ErrTypeScanAppliedMigrations)
 	}
 
-	deleteAllKeys(sources, appliedIDs)
-
-	if len(sources) == 0 {
-		return nil
+	for _, appliedID := range appliedIDs {
+		delete(sourceIDToName, appliedID)
 	}
 
-	applier.report.PendingCount = len(sources)
+	sourceRefs := applier.toSortedSourceRefs(sourceIDToName)
+	applier.report.PendingCount = len(sourceRefs)
 
-	return applier.applyAll(ctx, sources)
+	return applier.applyAll(ctx, sourceRefs)
 }
 
-func (applier *applier) scanAppliedMigrations(ctx context.Context, sources map[uint64]string) ([]uint64, error) {
+func (applier *applier) scanAppliedMigrations(ctx context.Context, availableIDs iter.Seq[uint64]) ([]uint64, error) {
 	idMin, idMax := uint64(math.MaxUint64), uint64(0)
 
-	for id := range sources {
+	for id := range availableIDs {
 		idMin = min(idMin, id)
 		idMax = max(idMax, id)
 	}
 
-	ids, err := applier.migrationsRepo.ScanApplied(ctx, applier.connection, idMin, idMax)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return ids, nil
+	return applier.migrationsRepo.ScanApplied(ctx, applier.connection, idMin, idMax)
 }
 
-func (applier *applier) applyAll(ctx context.Context, sources map[uint64]string) error {
-	loader := source.Loader{MaxSQLFileSize: applier.maxSQLFileSize}
-	ids := mapKeysToSlice(sources)
+func (applier *applier) toSortedSourceRefs(sources map[uint64]string) []sourceRef {
+	result := make([]sourceRef, 0, len(sources))
 
-	slices.Sort(ids)
+	for id, name := range sources {
+		result = append(result, sourceRef{id, name})
+	}
 
-	for _, id := range ids {
-		name := sources[id]
+	slices.SortFunc(result, func(a, b sourceRef) int {
+		return cmp.Compare(a.id, b.id)
+	})
 
-		sourceDir := filepath.Join(applier.projectDir, name)
+	return result
+}
 
-		source, err := loader.LoadSource(sourceDir)
+func (applier *applier) applyAll(ctx context.Context, sourceRefs []sourceRef) error {
+	source := source.Source{} //nolint:exhaustruct
 
-		if err != nil {
-			return wrapError(&ApplyMigrationError{Cause: err, Name: name}, ErrTypeApplyMigration)
+	for _, ref := range sourceRefs {
+		name := ref.name
+
+		if err := applier.loadSource(ref, &source); err != nil {
+			return wrapError(err, ErrTypeLoadMigration)
 		}
 
-		if duration, err := applier.applyMigration(ctx, source.UpSQL, name); err != nil {
+		if duration, err := applier.applyMigration(ctx, source.UpSQL, ref); err != nil {
 			return wrapError(&ApplyMigrationError{Cause: err, Name: name}, ErrTypeApplyMigration)
-		} else if err := applier.registerMigration(ctx, id, &source, duration); err != nil {
+		} else if err := applier.registerMigration(ctx, ref, &source, duration); err != nil {
 			return wrapError(err, ErrTypeRegisterMigration)
 		}
 	}
@@ -133,10 +143,20 @@ func (applier *applier) applyAll(ctx context.Context, sources map[uint64]string)
 	return nil
 }
 
-func (applier *applier) applyMigration(ctx context.Context, sql string, name string) (time.Duration, error) {
+func (applier *applier) loadSource(ref sourceRef, out *source.Source) error {
+	dir := filepath.Join(applier.projectDir, ref.name)
+
+	if err := applier.loader.LoadSource(dir, out); err != nil {
+		return &LoadSourceError{Cause: err, Name: ref.name}
+	}
+
+	return nil
+}
+
+func (applier *applier) applyMigration(ctx context.Context, sql string, ref sourceRef) (time.Duration, error) {
 	startTime := time.Now()
 
-	log.Printf("Applying %q,please wait...", name)
+	log.Printf("Applying %q,please wait...", ref.name)
 
 	if err := applier.executeMigrationSQL(ctx, sql); err != nil {
 		return 0, err
@@ -145,7 +165,7 @@ func (applier *applier) applyMigration(ctx context.Context, sql string, name str
 	duration := time.Since(startTime)
 	durationStr := humanizeDuration(duration, "0ms")
 
-	log.Printf("Applied  %q in %s", name, durationStr)
+	log.Printf("Applied  %q in %s", ref.name, durationStr)
 
 	return duration, nil
 }
@@ -172,12 +192,12 @@ func (applier *applier) executeMigrationSQL(ctx context.Context, sql string) err
 
 func (applier *applier) registerMigration(
 	ctx context.Context,
-	id uint64,
+	ref sourceRef,
 	source *source.Source,
 	duration time.Duration,
 ) error {
 	migration := &Migration{
-		ID:              id,
+		ID:              ref.id,
 		Name:            source.Configuration.Name,
 		AppliedAt:       time.Now().UTC(),
 		SQLUp:           source.UpSQL,

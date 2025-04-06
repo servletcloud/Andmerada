@@ -22,7 +22,8 @@ func TestLoadSource(t *testing.T) {
 	t.Run("Test loads source", func(t *testing.T) {
 		t.Parallel()
 
-		src, err := loader.LoadSource(sourceDir)
+		src := source.Source{} //nolint:exhaustruct
+		err := loader.LoadSource(sourceDir, &src)
 		require.NoError(t, err)
 
 		assert.Equal(t, resources.TemplateUpSQL(), src.UpSQL)

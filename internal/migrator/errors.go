@@ -12,6 +12,7 @@ const (
 	ErrTypeCreateDDL
 	ErrTypeListMigrationsOnDisk
 	ErrTypeScanAppliedMigrations
+	ErrTypeLoadMigration
 	ErrTypeApplyMigration
 	ErrTypeRegisterMigration
 )
@@ -85,4 +86,17 @@ func (e *TransactionNotCommittedError) Error() string {
 	}
 
 	return sb.String()
+}
+
+type LoadSourceError struct {
+	Cause error
+	Name  string
+}
+
+func (e *LoadSourceError) Error() string {
+	return e.Cause.Error()
+}
+
+func (e *LoadSourceError) Unwrap() error {
+	return e.Cause
 }

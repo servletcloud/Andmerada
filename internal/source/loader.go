@@ -14,18 +14,18 @@ type Loader struct {
 	MaxSQLFileSize int64
 }
 
-func (loader *Loader) LoadSource(dir string) (Source, error) {
+func (loader *Loader) LoadSource(dir string, out *Source) error {
 	var configuration Configuration
 
 	if err := loader.loadConfiguration(dir, &configuration); err != nil {
-		return Source{}, err
+		return err
 	}
 
 	upSQLPath := filepath.Join(dir, configuration.Up.File)
 	upSQL, err := loader.loadSQLFile(upSQLPath)
 
 	if err != nil {
-		return Source{}, err
+		return err
 	}
 
 	downSQL := ""
@@ -35,17 +35,15 @@ func (loader *Loader) LoadSource(dir string) (Source, error) {
 		downSQL, err = loader.loadSQLFile(downSQLPath)
 
 		if err != nil {
-			return Source{}, err
+			return err
 		}
 	}
 
-	result := Source{
-		Configuration: configuration,
-		UpSQL:         upSQL,
-		DownSQL:       downSQL,
-	}
+	out.Configuration = configuration
+	out.UpSQL = upSQL
+	out.DownSQL = downSQL
 
-	return result, nil
+	return nil
 }
 
 func (loader *Loader) loadConfiguration(dir string, out *Configuration) error {

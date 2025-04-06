@@ -44,6 +44,9 @@ linters-settings:
           - regexp
           - encoding/json
           - testing
+          - iter
+          - maps
+          - cmp
           - gopkg.in/yaml.v3
           - github.com/spf13/cobra
           - github.com/dustin/go-humanize

@@ -68,7 +68,7 @@ func (m *migrateCmdRunner) Run(cmd *cobra.Command) {
 	}
 }
 
-func (m *migrateCmdRunner) printError(err error) {
+func (m *migrateCmdRunner) printError(err error) { //nolint:cyclop
 	if m.isCancellationError(err) {
 		m.printCancellationError(err)
 
@@ -90,6 +90,8 @@ func (m *migrateCmdRunner) printError(err error) {
 		log.Printf("Failed to list migrations on disk:\n%v", migratorErr)
 	case migrator.ErrTypeScanAppliedMigrations:
 		log.Printf("Failed to scan applied migrations:\n%v", m.pgErrorToPrettyString(migratorErr))
+	case migrator.ErrTypeLoadMigration:
+		m.printLoadSourceError(migratorErr)
 	case migrator.ErrTypeApplyMigration:
 		m.printApplyError(migratorErr)
 	case migrator.ErrTypeRegisterMigration:
@@ -127,6 +129,18 @@ func (m *migrateCmdRunner) printDDLError(err *migrator.MigrateError) {
 	log.Println(m.pgErrorToPrettyString(err))
 	log.Println("Failed to create auxiliary tables for managing migrations.")
 	log.Println("Run 'andmerada show-ddl' to view the DDL SQL if you need to execute it manually.")
+}
+
+func (m *migrateCmdRunner) printLoadSourceError(err *migrator.MigrateError) {
+	var loadSourceErr *migrator.LoadSourceError
+
+	if errors.As(err, &loadSourceErr) {
+		log.Printf("Failed to load or parse migration from disk %q:\n%v", loadSourceErr.Name, err)
+		log.Println("This and all subsequent migrations will not be applied.")
+		log.Println("Fix the error and run 'andmerada migrate' again.")
+	} else {
+		log.Println(err.Error())
+	}
 }
 
 func (m *migrateCmdRunner) printApplyError(err *migrator.MigrateError) {
