@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/servletcloud/Andmerada/internal/cmd/descriptions"
@@ -35,6 +36,12 @@ func migrateCommand() *cobra.Command {
 		"Database connection URL (defaults to DATABASE_URL environment variable)",
 	)
 
+	command.Flags().Bool(
+		"skip-prevalidation",
+		strings.ToLower(os.Getenv("SKIP_PREVALIDATION")) == "true",
+		"Skip prevalidation of migration files",
+	)
+
 	return command
 }
 
@@ -52,12 +59,15 @@ func (m *migrateCmdRunner) Run(cmd *cobra.Command) {
 			"using the --database-url flag.")
 	}
 
+	skipPreValidation, _ := cmd.Flags().GetBool("skip-prevalidation")
+
 	project := mustLoadProject(osutil.GetwdOrPanic())
 
 	options := migrator.ApplyOptions{
-		MaxSQLFileSize: MaxSQLFileSizeBytes,
-		DatabaseURL:    databaseURL,
-		Project:        project,
+		MaxSQLFileSize:    MaxSQLFileSizeBytes,
+		DatabaseURL:       databaseURL,
+		Project:           project,
+		SkipPreValidation: skipPreValidation,
 	}
 	report := migrator.Report{PendingCount: 0}
 
@@ -92,8 +102,9 @@ func (m *migrateCmdRunner) printError(err error) { //nolint:cyclop
 		log.Printf("Failed to scan applied migrations:\n%v", m.pgErrorToPrettyString(migratorErr))
 	case migrator.ErrTypePreValidateSources:
 		m.printLoadSourceError(migratorErr)
-		log.Println("No migrations will be applied.")
-		log.Println("Fix the error and run 'andmerada migrate' again.")
+		log.Println("No migrations were applied due to validation errors.")
+		log.Println("Please fix the issues and run 'andmerada migrate' again.")
+		log.Println("To skip pre-validation (e.g., in local setups), use the --skip-prevalidation flag.")
 	case migrator.ErrTypeLoadMigration:
 		m.printLoadSourceError(migratorErr)
 		log.Println("This and all subsequent migrations will not be applied.")

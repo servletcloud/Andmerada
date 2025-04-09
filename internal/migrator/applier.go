@@ -21,16 +21,18 @@ type Report struct {
 }
 
 type ApplyOptions struct {
-	MaxSQLFileSize int64
-	DatabaseURL    string
-	Project        project.Project
+	MaxSQLFileSize    int64
+	DatabaseURL       string
+	Project           project.Project
+	SkipPreValidation bool
 }
 
 type applier struct {
-	maxSQLFileSize  int64
-	databaseURL     string
-	projectDir      string
-	migrationsTable string
+	maxSQLFileSize    int64
+	databaseURL       string
+	projectDir        string
+	migrationsTable   string
+	skipPreValidation bool
 
 	report         *Report
 	migrationsRepo *Migrations
@@ -50,14 +52,15 @@ func ApplyPending(ctx context.Context, options ApplyOptions, report *Report) err
 	report.PendingCount = 0
 
 	applier := &applier{
-		maxSQLFileSize:  options.MaxSQLFileSize,
-		databaseURL:     options.DatabaseURL,
-		projectDir:      options.Project.Dir,
-		report:          report,
-		migrationsTable: migrationsTable,
-		migrationsRepo:  &Migrations{TableName: migrationsTable},
-		loader:          source.Loader{MaxSQLFileSize: options.MaxSQLFileSize},
-		connection:      nil,
+		maxSQLFileSize:    options.MaxSQLFileSize,
+		databaseURL:       options.DatabaseURL,
+		projectDir:        options.Project.Dir,
+		skipPreValidation: options.SkipPreValidation,
+		report:            report,
+		migrationsTable:   migrationsTable,
+		migrationsRepo:    &Migrations{TableName: migrationsTable},
+		loader:            source.Loader{MaxSQLFileSize: options.MaxSQLFileSize},
+		connection:        nil,
 	}
 
 	defer applier.close(ctx)
@@ -95,8 +98,10 @@ func (applier *applier) applyPending(ctx context.Context) error {
 	sourceRefs := applier.toSortedSourceRefs(sourceIDToName)
 	applier.report.PendingCount = len(sourceRefs)
 
-	if err := applier.preValidateSources(sourceRefs); err != nil {
-		return wrapError(err, ErrTypePreValidateSources)
+	if !applier.skipPreValidation {
+		if err := applier.preValidateSources(sourceRefs); err != nil {
+			return wrapError(err, ErrTypePreValidateSources)
+		}
 	}
 
 	return applier.applyAll(ctx, sourceRefs)
