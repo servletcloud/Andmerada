@@ -30,7 +30,8 @@ func TestApplyPending(t *testing.T) {
 			Dir:           dir,
 			Configuration: createProjectConfig(),
 		},
-		DatabaseURL: string(connectionURL),
+		DatabaseURL:       string(connectionURL),
+		SkipPreValidation: false,
 	}
 
 	mustApplyPending := func(t *testing.T) {
@@ -185,28 +186,58 @@ func TestApplyPending(t *testing.T) {
 		})
 	})
 
-	t.Run("Pre-validation fails", func(t *testing.T) {
-		source1 := tests.CreateSource(t, dir, "Valid migration", "20250109025508")
-		source2 := tests.CreateSource(t, dir, "Valid migration", "20250109025509")
+	t.Run("Pre-validation", func(t *testing.T) {
+		dir := t.TempDir()
+		preValidateOptions := options
+		preValidateOptions.Project.Dir = dir
 
-		writeUpSQL(t, source1.FullPath, "CREATE TABLE pre_validation (id INTEGER);")
+		source1 := tests.CreateSource(t, dir, "Valid migration 1", "20250122110947")
+		source2 := tests.CreateSource(t, dir, "Valid migration 2", "20250318142235")
 
 		err := os.Remove(filepath.Join(source2.FullPath, source.UpSQLFilename))
 		require.NoError(t, err)
 
-		err = migrator.ApplyPending(ctx, options, &report)
+		t.Run("skip-pre-validation flag is false", func(t *testing.T) {
+			writeUpSQL(t, source1.FullPath, "CREATE TABLE pre_validation_1 (id INTEGER);")
 
-		var applierErr *migrator.MigrateError
+			optionsCopy := preValidateOptions
+			optionsCopy.SkipPreValidation = false
 
-		require.ErrorAs(t, err, &applierErr)
-		assert.Equal(t, migrator.ErrTypePreValidateSources, applierErr.ErrType)
+			err = migrator.ApplyPending(ctx, optionsCopy, &report)
 
-		var loadSourceErr *migrator.LoadSourceError
+			var applierErr *migrator.MigrateError
 
-		require.ErrorAs(t, err, &loadSourceErr)
-		assert.Equal(t, source2.BaseDir, loadSourceErr.Name)
+			require.ErrorAs(t, err, &applierErr)
+			assert.Equal(t, migrator.ErrTypePreValidateSources, applierErr.ErrType)
 
-		tests.AssertPgTableNotExist(ctx, t, conn, "pre_validation")
+			var loadSourceErr *migrator.LoadSourceError
+
+			require.ErrorAs(t, err, &loadSourceErr)
+			assert.Equal(t, source2.BaseDir, loadSourceErr.Name)
+
+			tests.AssertPgTableNotExist(ctx, t, conn, "pre_validation_1")
+		})
+
+		t.Run("skip-pre-validation flag is true", func(t *testing.T) {
+			writeUpSQL(t, source1.FullPath, "CREATE TABLE pre_validation_2 (id INTEGER);")
+
+			optionsCopy := preValidateOptions
+			optionsCopy.SkipPreValidation = true
+
+			err = migrator.ApplyPending(ctx, optionsCopy, &report)
+
+			var applierErr *migrator.MigrateError
+
+			require.ErrorAs(t, err, &applierErr)
+			assert.Equal(t, migrator.ErrTypeLoadMigration, applierErr.ErrType)
+
+			var loadErr *migrator.LoadSourceError
+
+			require.ErrorAs(t, err, &loadErr)
+			assert.Equal(t, source2.BaseDir, loadErr.Name)
+
+			tests.AssertPgTableExist(ctx, t, conn, "pre_validation_2")
+		})
 	})
 }
 

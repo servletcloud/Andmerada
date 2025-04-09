@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/servletcloud/Andmerada/internal/cmd/descriptions"
@@ -35,6 +36,12 @@ func migrateCommand() *cobra.Command {
 		"Database connection URL (defaults to DATABASE_URL environment variable)",
 	)
 
+	command.Flags().Bool(
+		"skip-pre-validation",
+		strings.ToLower(os.Getenv("SKIP_PRE_VALIDATION")) == "true",
+		"Skip pre-validation of migration files",
+	)
+
 	return command
 }
 
@@ -52,12 +59,15 @@ func (m *migrateCmdRunner) Run(cmd *cobra.Command) {
 			"using the --database-url flag.")
 	}
 
+	skipPreValidation, _ := cmd.Flags().GetBool("skip-pre-validation")
+
 	project := mustLoadProject(osutil.GetwdOrPanic())
 
 	options := migrator.ApplyOptions{
-		MaxSQLFileSize: MaxSQLFileSizeBytes,
-		DatabaseURL:    databaseURL,
-		Project:        project,
+		MaxSQLFileSize:    MaxSQLFileSizeBytes,
+		DatabaseURL:       databaseURL,
+		Project:           project,
+		SkipPreValidation: skipPreValidation,
 	}
 	report := migrator.Report{PendingCount: 0}
 
