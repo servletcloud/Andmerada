@@ -2,6 +2,7 @@ package migrator
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -25,4 +26,10 @@ func isConnectionInTransaction(conn *pgconn.PgConn) bool {
 	status := conn.TxStatus()
 
 	return status == inTransaction || status == inFailedTransaction
+}
+
+func isPgErrorOfCode(err error, pgErrorCode string) bool {
+	var pgError *pgconn.PgError
+
+	return errors.As(err, &pgError) && pgError.Code == pgErrorCode
 }
