@@ -32,6 +32,7 @@ func TestApplyPending(t *testing.T) {
 		},
 		DatabaseURL:       string(connectionURL),
 		SkipPreValidation: false,
+		DryRun:            false,
 	}
 
 	mustApplyPending := func(t *testing.T) {
@@ -69,6 +70,20 @@ func TestApplyPending(t *testing.T) {
 		createMigration(t, "Cr table", "20241225112129", "CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL);")
 		createMigration(t, "Add column", "20241228143752", "ALTER TABLE users ADD COLUMN age INTEGER NOT NULL DEFAULT 0;")
 		createMigration(t, "Rename column", "20241229143752", "ALTER TABLE users RENAME COLUMN age TO years;")
+
+		t.Run("In dry run mode, it does not apply the migrations", func(t *testing.T) {
+			tests.AssertPgTableNotExist(ctx, t, conn, "migrations")
+			tests.AssertPgTableNotExist(ctx, t, conn, "users")
+
+			optionsCopy := options
+			optionsCopy.DryRun = true
+
+			err := migrator.ApplyPending(ctx, optionsCopy, &report)
+			require.NoError(t, err)
+
+			tests.AssertPgTableNotExist(ctx, t, conn, "migrations")
+			tests.AssertPgTableNotExist(ctx, t, conn, "users")
+		})
 
 		t.Run("It applies the migrations in order", func(t *testing.T) {
 			tests.AssertPgTableNotExist(ctx, t, conn, "migrations")

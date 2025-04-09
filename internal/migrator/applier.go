@@ -11,6 +11,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/servletcloud/Andmerada/internal/project"
 	"github.com/servletcloud/Andmerada/internal/source"
@@ -24,6 +25,7 @@ type ApplyOptions struct {
 	MaxSQLFileSize    int64
 	DatabaseURL       string
 	Project           project.Project
+	DryRun            bool
 	SkipPreValidation bool
 }
 
@@ -32,6 +34,7 @@ type applier struct {
 	databaseURL       string
 	projectDir        string
 	migrationsTable   string
+	dryRun            bool
 	skipPreValidation bool
 
 	report         *Report
@@ -55,6 +58,7 @@ func ApplyPending(ctx context.Context, options ApplyOptions, report *Report) err
 		maxSQLFileSize:    options.MaxSQLFileSize,
 		databaseURL:       options.DatabaseURL,
 		projectDir:        options.Project.Dir,
+		dryRun:            options.DryRun,
 		skipPreValidation: options.SkipPreValidation,
 		report:            report,
 		migrationsTable:   migrationsTable,
@@ -82,13 +86,17 @@ func (applier *applier) applyPending(ctx context.Context) error {
 		return wrapError(err, ErrTypeDBConnect)
 	}
 
-	if err := applier.migrationsRepo.RunDDL(ctx, applier.connection); err != nil {
-		return wrapError(err, ErrTypeCreateDDL)
-	}
-
 	appliedIDs, err := applier.scanAppliedMigrations(ctx, maps.Keys(sourceIDToName))
 	if err != nil {
-		return wrapError(err, ErrTypeScanAppliedMigrations)
+		needsToRunDDL := isPgErrorOfCode(err, pgerrcode.UndefinedTable)
+
+		if !needsToRunDDL {
+			return wrapError(err, ErrTypeScanAppliedMigrations)
+		}
+
+		if err := applier.runDDL(ctx); err != nil {
+			return wrapError(err, ErrTypeCreateDDL)
+		}
 	}
 
 	for _, appliedID := range appliedIDs {
@@ -98,13 +106,19 @@ func (applier *applier) applyPending(ctx context.Context) error {
 	sourceRefs := applier.toSortedSourceRefs(sourceIDToName)
 	applier.report.PendingCount = len(sourceRefs)
 
-	if !applier.skipPreValidation {
-		if err := applier.preValidateSources(sourceRefs); err != nil {
-			return wrapError(err, ErrTypePreValidateSources)
-		}
+	if err := applier.preValidateSources(sourceRefs); err != nil {
+		return wrapError(err, ErrTypePreValidateSources)
 	}
 
 	return applier.applyAll(ctx, sourceRefs)
+}
+
+func (applier *applier) runDDL(ctx context.Context) error {
+	if applier.dryRun {
+		return nil
+	}
+
+	return applier.migrationsRepo.RunDDL(ctx, applier.connection)
 }
 
 func (applier *applier) scanAppliedMigrations(ctx context.Context, availableIDs iter.Seq[uint64]) ([]uint64, error) {
@@ -133,6 +147,10 @@ func (applier *applier) toSortedSourceRefs(sources map[uint64]string) []sourceRe
 }
 
 func (applier *applier) preValidateSources(sourceRefs []sourceRef) error {
+	if applier.skipPreValidation {
+		return nil
+	}
+
 	source := source.Source{} //nolint:exhaustruct
 
 	for _, ref := range sourceRefs {
@@ -198,8 +216,10 @@ func (applier *applier) executeMigrationSQL(ctx context.Context, sql string) err
 		panic("the connection is not allowed to be in an active transaction")
 	}
 
-	if err := execSimple(ctx, pgConn, sql); err != nil {
-		return &ExecSQLError{Cause: err, SQL: sql}
+	if !applier.dryRun {
+		if err := execSimple(ctx, pgConn, sql); err != nil {
+			return &ExecSQLError{Cause: err, SQL: sql}
+		}
 	}
 
 	if isConnectionInTransaction(pgConn) {
@@ -217,6 +237,10 @@ func (applier *applier) registerMigration(
 	source *source.Source,
 	duration time.Duration,
 ) error {
+	if applier.dryRun {
+		return nil
+	}
+
 	migration := &Migration{
 		ID:              ref.id,
 		Name:            source.Configuration.Name,

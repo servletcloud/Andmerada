@@ -33,13 +33,20 @@ func migrateCommand() *cobra.Command {
 	command.Flags().String(
 		"database-url",
 		os.Getenv("DATABASE_URL"),
-		"Database connection URL (defaults to DATABASE_URL environment variable)",
+		"Database connection URL. Defaults to the DATABASE_URL environment variable.",
+	)
+
+	command.Flags().Bool(
+		"dry-run",
+		strings.ToLower(os.Getenv("DRY_RUN")) == "true",
+		"Simulates the migration process without applying any changes. Defaults to the DRY_RUN environment variable.",
 	)
 
 	command.Flags().Bool(
 		"skip-prevalidation",
 		strings.ToLower(os.Getenv("SKIP_PREVALIDATION")) == "true",
-		"Skip prevalidation of migration files",
+		"Bypasses prevalidation checks before applying migrations (use with caution; intended for local use). "+
+			"Defaults to the SKIP_PREVALIDATION environment variable.",
 	)
 
 	return command
@@ -59,6 +66,8 @@ func (m *migrateCmdRunner) Run(cmd *cobra.Command) {
 			"using the --database-url flag.")
 	}
 
+	dryRun, _ := cmd.Flags().GetBool("dry-run")
+
 	skipPreValidation, _ := cmd.Flags().GetBool("skip-prevalidation")
 
 	project := mustLoadProject(osutil.GetwdOrPanic())
@@ -67,6 +76,7 @@ func (m *migrateCmdRunner) Run(cmd *cobra.Command) {
 		MaxSQLFileSize:    MaxSQLFileSizeBytes,
 		DatabaseURL:       databaseURL,
 		Project:           project,
+		DryRun:            dryRun,
 		SkipPreValidation: skipPreValidation,
 	}
 	report := migrator.Report{PendingCount: 0}
