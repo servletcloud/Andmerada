@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest,funlen
+//nolint:paralleltest,funlen,maintidx
 func TestApplyPending(t *testing.T) {
 	ctx := context.Background()
 	connectionURL := tests.StartEmbeddedPostgres(t)
@@ -31,8 +31,9 @@ func TestApplyPending(t *testing.T) {
 			Configuration: createProjectConfig(),
 		},
 		DatabaseURL:       string(connectionURL),
-		SkipPreValidation: false,
+		Limit:             migrator.NoLimit,
 		DryRun:            false,
+		SkipPreValidation: false,
 	}
 
 	mustApplyPending := func(t *testing.T) {
@@ -253,6 +254,32 @@ func TestApplyPending(t *testing.T) {
 
 			tests.AssertPgTableExist(ctx, t, conn, "pre_validation_2")
 		})
+	})
+
+	t.Run("Limit", func(t *testing.T) {
+		dir := t.TempDir()
+		source1 := tests.CreateSource(t, dir, "Valid migration 1", "20250413193712")
+		source2 := tests.CreateSource(t, dir, "Valid migration 2", "20251201132149")
+
+		writeUpSQL(t, source1.FullPath, "CREATE TABLE limit_1 (id INTEGER);")
+		writeUpSQL(t, source2.FullPath, "CREATE TABLE limit_2 (id INTEGER);")
+
+		optionsCopy := options
+		optionsCopy.Project.Dir = dir
+		optionsCopy.Limit = 1
+
+		err := migrator.ApplyPending(ctx, optionsCopy, &report)
+		require.NoError(t, err)
+
+		tests.AssertPgTableExist(ctx, t, conn, "limit_1")
+		tests.AssertPgTableNotExist(ctx, t, conn, "limit_2")
+		assert.Equal(t, 1, report.PendingCount)
+
+		err = migrator.ApplyPending(ctx, optionsCopy, &report)
+		require.NoError(t, err)
+
+		tests.AssertPgTableExist(ctx, t, conn, "limit_2")
+		assert.Equal(t, 1, report.PendingCount)
 	})
 }
 
