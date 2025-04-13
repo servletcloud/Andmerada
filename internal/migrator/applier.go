@@ -25,6 +25,7 @@ type ApplyOptions struct {
 	MaxSQLFileSize    int64
 	DatabaseURL       string
 	Project           project.Project
+	Limit             int
 	DryRun            bool
 	SkipPreValidation bool
 }
@@ -34,6 +35,7 @@ type applier struct {
 	databaseURL       string
 	projectDir        string
 	migrationsTable   string
+	limit             int
 	dryRun            bool
 	skipPreValidation bool
 
@@ -48,6 +50,10 @@ type sourceRef struct {
 	name string
 }
 
+const (
+	NoLimit = 0
+)
+
 func ApplyPending(ctx context.Context, options ApplyOptions, report *Report) error {
 	projectConfiguration := options.Project.Configuration
 	migrationsTable := projectConfiguration.MigrationsTableName
@@ -58,6 +64,7 @@ func ApplyPending(ctx context.Context, options ApplyOptions, report *Report) err
 		maxSQLFileSize:    options.MaxSQLFileSize,
 		databaseURL:       options.DatabaseURL,
 		projectDir:        options.Project.Dir,
+		limit:             options.Limit,
 		dryRun:            options.DryRun,
 		skipPreValidation: options.SkipPreValidation,
 		report:            report,
@@ -143,7 +150,13 @@ func (applier *applier) toSortedSourceRefs(sources map[uint64]string) []sourceRe
 		return cmp.Compare(a.id, b.id)
 	})
 
-	return result
+	if applier.limit == NoLimit {
+		return result
+	}
+
+	upperBound := min(len(result), applier.limit)
+
+	return result[:upperBound]
 }
 
 func (applier *applier) preValidateSources(sourceRefs []sourceRef) error {

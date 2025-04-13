@@ -36,6 +36,12 @@ func migrateCommand() *cobra.Command {
 		"Database connection URL. Defaults to the DATABASE_URL environment variable.",
 	)
 
+	command.Flags().Uint32(
+		"limit",
+		migrator.NoLimit,
+		"Limits how many not-yet-applied migrations will be executed. Set to 0 for no limit.",
+	)
+
 	command.Flags().Bool(
 		"dry-run",
 		strings.ToLower(os.Getenv("DRY_RUN")) == "true",
@@ -66,6 +72,8 @@ func (m *migrateCmdRunner) Run(cmd *cobra.Command) {
 			"using the --database-url flag.")
 	}
 
+	limit, _ := cmd.Flags().GetUint16("limit")
+
 	dryRun, _ := cmd.Flags().GetBool("dry-run")
 
 	skipPreValidation, _ := cmd.Flags().GetBool("skip-prevalidation")
@@ -76,6 +84,7 @@ func (m *migrateCmdRunner) Run(cmd *cobra.Command) {
 		MaxSQLFileSize:    MaxSQLFileSizeBytes,
 		DatabaseURL:       databaseURL,
 		Project:           project,
+		Limit:             int(limit),
 		DryRun:            dryRun,
 		SkipPreValidation: skipPreValidation,
 	}
