@@ -36,3 +36,30 @@ type DuplicateSourceError struct {
 func (e *DuplicateSourceError) Error() string {
 	return fmt.Sprintf("duplicate migrations: %v", e.Paths)
 }
+
+type CompileFilterError struct {
+	Expression string
+	Err        error
+}
+
+func (e *CompileFilterError) Error() string {
+	return fmt.Sprintf("cannot compile filter expression %q: %v", e.Expression, e.Err)
+}
+
+func (e *CompileFilterError) Unwrap() error {
+	return e.Err
+}
+
+type RunFilterError struct {
+	Expression string
+	ID         uint64
+	Err        error
+}
+
+func (e *RunFilterError) Error() string {
+	return fmt.Sprintf("cannot run filter expression %q for ID %v: %v", e.Expression, e.ID, e.Err)
+}
+
+func (e *RunFilterError) Unwrap() error {
+	return e.Err
+}

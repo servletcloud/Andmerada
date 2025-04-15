@@ -31,6 +31,8 @@ linters-settings:
           - errors
           - fmt
           - github.com/dustin/go-humanize
+          - github.com/expr-lang/expr
+          - github.com/expr-lang/expr/vm
           - github.com/fergusstrange/embedded-postgres
           - github.com/jackc/pgerrcode
           - github.com/jackc/pgx/v5
