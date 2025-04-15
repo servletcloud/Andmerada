@@ -17,6 +17,10 @@ func newIDFromTime(t time.Time) uint64 {
 	return newIDFromStringUnsafe(timestamp)
 }
 
+func idToString(id uint64) string {
+	return strconv.FormatUint(id, 10)
+}
+
 func newIDFromString(str string) uint64 {
 	if len(str) < idLength+1 {
 		return EmptyMigrationID
