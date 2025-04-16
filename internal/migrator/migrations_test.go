@@ -1,7 +1,6 @@
 package migrator_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -14,11 +13,10 @@ import (
 
 //nolint:paralleltest
 func TestMigrations_ScanApplied(t *testing.T) {
-	ctx := context.Background()
 	connectionURL := tests.StartEmbeddedPostgres(t)
 	conn := tests.OpenPgConnection(t, connectionURL)
 
-	_, err := conn.Exec(ctx, sqlres.DDL("migrations"))
+	_, err := conn.Exec(t.Context(), sqlres.DDL("migrations"))
 	require.NoError(t, err)
 
 	migrations := &migrator.Migrations{TableName: "migrations"}
@@ -26,7 +24,7 @@ func TestMigrations_ScanApplied(t *testing.T) {
 	scanAppliedMigrations := func(t *testing.T, minID, maxID uint64) []uint64 {
 		t.Helper()
 
-		result, err := migrations.ScanApplied(ctx, conn, minID, maxID)
+		result, err := migrations.ScanApplied(t.Context(), conn, minID, maxID)
 
 		require.NoError(t, err)
 
@@ -39,15 +37,17 @@ func TestMigrations_ScanApplied(t *testing.T) {
 	})
 
 	t.Run("when there are applied migrations", func(t *testing.T) {
-		insertDummyMigration(ctx, t, conn, 20241225112129)
-		insertDummyMigration(ctx, t, conn, 20241225112130)
-		insertDummyMigration(ctx, t, conn, 20241225112131)
+		insertDummyMigration(t, conn, 20241225112129)
+		insertDummyMigration(t, conn, 20241225112130)
+		insertDummyMigration(t, conn, 20241225112131)
 
 		t.Run("filter covers the boundaries", func(t *testing.T) {
 			actual := scanAppliedMigrations(t, 20241225112129, 20241225112131)
 
 			assert.Len(t, actual, 3)
-			assert.Contains(t, actual, uint64(20241225112129), uint64(20241225112130), uint64(20241225112131))
+			assert.Contains(t, actual, uint64(20241225112129))
+			assert.Contains(t, actual, uint64(20241225112130))
+			assert.Contains(t, actual, uint64(20241225112131))
 		})
 
 		t.Run("filter includes the boundary values", func(t *testing.T) {
@@ -59,7 +59,7 @@ func TestMigrations_ScanApplied(t *testing.T) {
 	})
 }
 
-func insertDummyMigration(ctx context.Context, t *testing.T, conn *pgx.Conn, id uint64) {
+func insertDummyMigration(t *testing.T, conn *pgx.Conn, id uint64) {
 	t.Helper()
 
 	name := "create users table"
@@ -73,6 +73,6 @@ func insertDummyMigration(ctx context.Context, t *testing.T, conn *pgx.Conn, id 
 		VALUES ($1, $2, $3, $4, $5, $6);
 	`
 
-	_, err := conn.Exec(ctx, query, id, name, sqlUp, sqlUpSHA256, durationMS, meta)
+	_, err := conn.Exec(t.Context(), query, id, name, sqlUp, sqlUpSHA256, durationMS, meta)
 	require.NoError(t, err)
 }

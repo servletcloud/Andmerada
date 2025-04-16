@@ -51,7 +51,7 @@ func (translator *pgErrorTranslator) writeKv(sb *strings.Builder, key, value str
 		return
 	}
 
-	sb.WriteString(fmt.Sprintf("%s: %s\n", key, value))
+	fmt.Fprintf(sb, "%s: %s\n", key, value)
 }
 
 func (translator *pgErrorTranslator) highlightSQLPosition(sql string, pos int) (int, int, string) {

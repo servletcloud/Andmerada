@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"testing"
@@ -37,7 +36,7 @@ func StartEmbeddedPostgres(t *testing.T) ConnectionURL {
 func OpenPgConnection(t *testing.T, url ConnectionURL) *pgx.Conn {
 	t.Helper()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	conn, err := pgx.Connect(ctx, string(url))
 	require.NoError(t, err)
 
@@ -63,12 +62,12 @@ func GetRandomAvailablePort(t *testing.T) uint32 {
 	return uint32(addr.Port) //nolint:gosec
 }
 
-func isPgTableExist(ctx context.Context, t *testing.T, conn *pgx.Conn, name string) bool {
+func isPgTableExist(t *testing.T, conn *pgx.Conn, name string) bool {
 	t.Helper()
 
 	query := fmt.Sprintf("select * from %v limit 1;", name)
 
-	_, err := conn.Exec(ctx, query)
+	_, err := conn.Exec(t.Context(), query)
 
 	if err == nil {
 		return true

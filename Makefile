@@ -6,7 +6,7 @@ MAIN_FILE := cmd/$(APP_NAME)/main.go
 EXECUTABLE := $(BUILD_DIR)/$(APP_NAME)
 
 GOLANG_BIN := $(shell go env GOPATH)/bin
-GOLANGCI_LINT_VERSION := v1.62.2
+GOLANGCI_LINT_VERSION := v2.1.2
 
 
 .PHONY: all ci run build clean fmt test test-with-race lint check-fmt install-lint

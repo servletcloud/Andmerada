@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	//nolint:stylecheck,revive
+	//nolint:revive
 	O_CREATE_EXCL_WRONLY = os.O_CREATE | os.O_EXCL | os.O_WRONLY
 
 	FilePerm0644 = 0644 // Owner: read/write, Group/Others: read

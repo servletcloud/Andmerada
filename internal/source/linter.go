@@ -12,6 +12,14 @@ type linter struct {
 	report *LintReport
 }
 
+func (linter *linter) AddError(title string, files ...string) {
+	linter.report.Errors = append(linter.report.Errors, LintError{Title: title, Files: files})
+}
+
+func (linter *linter) AddWarning(title string, files ...string) {
+	linter.report.Warings = append(linter.report.Warings, LintError{Title: title, Files: files})
+}
+
 func (linter *linter) lint() error {
 	duplicatesLinter := linters.NewDupeLinter(linter)
 	defer duplicatesLinter.Report()
@@ -77,12 +85,4 @@ func (linter *linter) newFutureLinter() *linters.FutureLinter {
 		Reporter:  linter,
 		Threshold: newIDFromTime(linter.NowUTC),
 	}
-}
-
-func (linter *linter) AddError(title string, files ...string) {
-	linter.report.Errors = append(linter.report.Errors, LintError{Title: title, Files: files})
-}
-
-func (linter *linter) AddWarning(title string, files ...string) {
-	linter.report.Warings = append(linter.report.Warings, LintError{Title: title, Files: files})
 }

@@ -1,69 +1,87 @@
----
+version: "2"
 linters:
-  enable-all: true
-  disable:
-    - exportloopref
-    - gofumpt
-
-linters-settings:
-  varnamelen:
-    min-name-length: 3
-    ignore-names:
-      - sb
-      - id
-      - db
-  tagliatelle:
-    case:
+  default: all
+  settings:
+    depguard:
       rules:
-        yaml: snake
-  depguard:
-    rules:
-      main:
-        allow:
-          - bufio
-          - bytes
-          - cmp
-          - context
-          - crypto/sha256
-          - embed
-          - encoding/hex
-          - encoding/json
-          - errors
-          - fmt
-          - github.com/dustin/go-humanize
-          - github.com/expr-lang/expr
-          - github.com/expr-lang/expr/vm
-          - github.com/fergusstrange/embedded-postgres
-          - github.com/jackc/pgerrcode
-          - github.com/jackc/pgx/v5
-          - github.com/servletcloud/Andmerada/internal/cmd
-          - github.com/servletcloud/Andmerada/internal/migrator
-          - github.com/servletcloud/Andmerada/internal/osutil
-          - github.com/servletcloud/Andmerada/internal/project
-          - github.com/servletcloud/Andmerada/internal/resources
-          - github.com/servletcloud/Andmerada/internal/schema
-          - github.com/servletcloud/Andmerada/internal/source
-          - github.com/servletcloud/Andmerada/internal/tests
-          - github.com/servletcloud/Andmerada/internal/ymlutil
-          - github.com/spf13/cobra
-          - github.com/stretchr/testify/assert
-          - github.com/stretchr/testify/require
-          - github.com/xeipuuv/gojsonschema
-          - gopkg.in/yaml.v3
-          - io
-          - iter
-          - log
-          - maps
-          - math
-          - net
-          - net/url
-          - os
-          - path/filepath
-          - regexp
-          - slices
-          - sort
-          - strconv
-          - strings
-          - testing
-          - time
-          - unicode
+        main:
+          allow:
+            - bufio
+            - bytes
+            - cmp
+            - context
+            - crypto/sha256
+            - embed
+            - encoding/hex
+            - encoding/json
+            - errors
+            - fmt
+            - github.com/dustin/go-humanize
+            - github.com/expr-lang/expr
+            - github.com/expr-lang/expr/vm
+            - github.com/fergusstrange/embedded-postgres
+            - github.com/jackc/pgerrcode
+            - github.com/jackc/pgx/v5
+            - github.com/servletcloud/Andmerada/internal/cmd
+            - github.com/servletcloud/Andmerada/internal/migrator
+            - github.com/servletcloud/Andmerada/internal/osutil
+            - github.com/servletcloud/Andmerada/internal/project
+            - github.com/servletcloud/Andmerada/internal/resources
+            - github.com/servletcloud/Andmerada/internal/schema
+            - github.com/servletcloud/Andmerada/internal/source
+            - github.com/servletcloud/Andmerada/internal/tests
+            - github.com/servletcloud/Andmerada/internal/ymlutil
+            - github.com/spf13/cobra
+            - github.com/stretchr/testify/assert
+            - github.com/stretchr/testify/require
+            - github.com/xeipuuv/gojsonschema
+            - gopkg.in/yaml.v3
+            - io
+            - iter
+            - log
+            - maps
+            - math
+            - net
+            - net/url
+            - os
+            - path/filepath
+            - regexp
+            - slices
+            - sort
+            - strconv
+            - strings
+            - testing
+            - time
+            - unicode
+    tagliatelle:
+      case:
+        rules:
+          yaml: snake
+    varnamelen:
+      min-name-length: 3
+      ignore-names:
+        - sb
+        - id
+        - db
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
