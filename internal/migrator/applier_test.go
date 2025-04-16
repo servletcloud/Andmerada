@@ -1,7 +1,6 @@
 package migrator_test
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,7 +17,6 @@ import (
 
 //nolint:paralleltest,funlen,maintidx
 func TestApplyPending(t *testing.T) {
-	ctx := context.Background()
 	connectionURL := tests.StartEmbeddedPostgres(t)
 	conn := tests.OpenPgConnection(t, connectionURL)
 	dir := t.TempDir()
@@ -39,17 +37,17 @@ func TestApplyPending(t *testing.T) {
 	mustApplyPending := func(t *testing.T) {
 		t.Helper()
 
-		err := migrator.ApplyPending(ctx, options, &report)
+		err := migrator.ApplyPending(t.Context(), options, &report)
 		require.NoError(t, err)
 	}
 
 	t.Run("There are no migrations", func(t *testing.T) {
 		t.Run("It does not create a migrations table", func(t *testing.T) {
-			tests.AssertPgTableNotExist(ctx, t, conn, "migrations")
+			tests.AssertPgTableNotExist(t, conn, "migrations")
 
 			mustApplyPending(t)
 
-			tests.AssertPgTableNotExist(ctx, t, conn, "migrations")
+			tests.AssertPgTableNotExist(t, conn, "migrations")
 		})
 
 		t.Run("Report has zero migrations", func(t *testing.T) {
@@ -73,39 +71,39 @@ func TestApplyPending(t *testing.T) {
 		createMigration(t, "Rename column", "20241229143752", "ALTER TABLE users RENAME COLUMN age TO years;")
 
 		t.Run("In dry run mode, it does not apply the migrations", func(t *testing.T) {
-			tests.AssertPgTableNotExist(ctx, t, conn, "migrations")
-			tests.AssertPgTableNotExist(ctx, t, conn, "users")
+			tests.AssertPgTableNotExist(t, conn, "migrations")
+			tests.AssertPgTableNotExist(t, conn, "users")
 
 			optionsCopy := options
 			optionsCopy.DryRun = true
 
-			err := migrator.ApplyPending(ctx, optionsCopy, &report)
+			err := migrator.ApplyPending(t.Context(), optionsCopy, &report)
 			require.NoError(t, err)
 
-			tests.AssertPgTableNotExist(ctx, t, conn, "migrations")
-			tests.AssertPgTableNotExist(ctx, t, conn, "users")
+			tests.AssertPgTableNotExist(t, conn, "migrations")
+			tests.AssertPgTableNotExist(t, conn, "users")
 		})
 
 		t.Run("It applies the migrations in order", func(t *testing.T) {
-			tests.AssertPgTableNotExist(ctx, t, conn, "migrations")
-			tests.AssertPgTableNotExist(ctx, t, conn, "users")
+			tests.AssertPgTableNotExist(t, conn, "migrations")
+			tests.AssertPgTableNotExist(t, conn, "users")
 
 			mustApplyPending(t)
 
-			tests.AssertPgTableExist(ctx, t, conn, "migrations")
-			tests.AssertPgTableExist(ctx, t, conn, "users")
+			tests.AssertPgTableExist(t, conn, "migrations")
+			tests.AssertPgTableExist(t, conn, "users")
 
 			assert.Equal(t, 3, report.PendingCount)
 		})
 
 		t.Run("Insert into a newly create table succeeds", func(t *testing.T) {
-			_, err := conn.Exec(ctx, "INSERT INTO users (id, name, years) VALUES (1, 'John Doe', 30)")
+			_, err := conn.Exec(t.Context(), "INSERT INTO users (id, name, years) VALUES (1, 'John Doe', 30)")
 			require.NoError(t, err)
 		})
 
 		t.Run("It is idempotent, does not apply the migrations again", func(t *testing.T) {
-			tests.AssertPgTableExist(ctx, t, conn, "migrations")
-			tests.AssertPgTableExist(ctx, t, conn, "users")
+			tests.AssertPgTableExist(t, conn, "migrations")
+			tests.AssertPgTableExist(t, conn, "users")
 
 			mustApplyPending(t)
 
@@ -116,12 +114,12 @@ func TestApplyPending(t *testing.T) {
 			sql := "BEGIN; CREATE TABLE sessions (id SERIAL PRIMARY KEY, user_id INTEGER);"
 			createMigration(t, "Create session table", "20250101101523", sql)
 
-			err := migrator.ApplyPending(ctx, options, &report)
+			err := migrator.ApplyPending(t.Context(), options, &report)
 
 			var notCommittedErr *migrator.TransactionNotCommittedError
 
 			require.ErrorAs(t, err, &notCommittedErr)
-			tests.AssertPgTableNotExist(ctx, t, conn, "sessions")
+			tests.AssertPgTableNotExist(t, conn, "sessions")
 		})
 
 		t.Run("Failed all migrations because of a duplicate migration", func(t *testing.T) {
@@ -131,10 +129,10 @@ func TestApplyPending(t *testing.T) {
 			result := createMigration(t, "Some dummy migtation", "20250101101524", "CREATE TABLE dummy(id INTEGER);")
 			tests.MkDir(t, result.FullPath+"_dupe")
 
-			err := migrator.ApplyPending(ctx, options, &report)
+			err := migrator.ApplyPending(t.Context(), options, &report)
 
-			tests.AssertPgTableNotExist(ctx, t, conn, "sessions")
-			tests.AssertPgTableNotExist(ctx, t, conn, "dummy")
+			tests.AssertPgTableNotExist(t, conn, "sessions")
+			tests.AssertPgTableNotExist(t, conn, "dummy")
 
 			var dupErr *source.DuplicateSourceError
 
@@ -146,12 +144,12 @@ func TestApplyPending(t *testing.T) {
 		t.Run("Populates columns of migrations table", func(t *testing.T) {
 			createMigration(t, "Dummy migration", "20250109025508", "SELECT 1;")
 
-			err := migrator.ApplyPending(ctx, options, &report)
+			err := migrator.ApplyPending(t.Context(), options, &report)
 			require.NoError(t, err)
 
 			t.Run("Populates id,name,applied_at columns", func(t *testing.T) {
 				query := "SELECT id, name, applied_at FROM migrations WHERE id=20250109025508"
-				row := conn.QueryRow(ctx, query)
+				row := conn.QueryRow(t.Context(), query)
 
 				var (
 					id        uint64
@@ -169,7 +167,7 @@ func TestApplyPending(t *testing.T) {
 
 			t.Run("Populates sql and hashes columns", func(t *testing.T) {
 				query := "SELECT sql_up,sql_down,sql_up_sha256,sql_down_sha256 FROM migrations WHERE id=20250109025508"
-				row := conn.QueryRow(ctx, query)
+				row := conn.QueryRow(t.Context(), query)
 
 				var sqlUp, sqlDown, sqlUpSHA256, sqlDownSHA256 string
 
@@ -184,7 +182,7 @@ func TestApplyPending(t *testing.T) {
 
 			t.Run("Populates duration_ms,rollback_blocked,meta columns", func(t *testing.T) {
 				query := "SELECT duration_ms,rollback_blocked,meta FROM migrations WHERE id=20250109025508"
-				row := conn.QueryRow(ctx, query)
+				row := conn.QueryRow(t.Context(), query)
 
 				var (
 					durationMs      int64
@@ -219,7 +217,7 @@ func TestApplyPending(t *testing.T) {
 			optionsCopy := preValidateOptions
 			optionsCopy.SkipPreValidation = false
 
-			err = migrator.ApplyPending(ctx, optionsCopy, &report)
+			err = migrator.ApplyPending(t.Context(), optionsCopy, &report)
 
 			var applierErr *migrator.MigrateError
 
@@ -231,7 +229,7 @@ func TestApplyPending(t *testing.T) {
 			require.ErrorAs(t, err, &loadSourceErr)
 			assert.Equal(t, source2.BaseDir, loadSourceErr.Name)
 
-			tests.AssertPgTableNotExist(ctx, t, conn, "pre_validation_1")
+			tests.AssertPgTableNotExist(t, conn, "pre_validation_1")
 		})
 
 		t.Run("skip-pre-validation flag is true", func(t *testing.T) {
@@ -240,7 +238,7 @@ func TestApplyPending(t *testing.T) {
 			optionsCopy := preValidateOptions
 			optionsCopy.SkipPreValidation = true
 
-			err = migrator.ApplyPending(ctx, optionsCopy, &report)
+			err = migrator.ApplyPending(t.Context(), optionsCopy, &report)
 
 			var applierErr *migrator.MigrateError
 
@@ -252,7 +250,7 @@ func TestApplyPending(t *testing.T) {
 			require.ErrorAs(t, err, &loadErr)
 			assert.Equal(t, source2.BaseDir, loadErr.Name)
 
-			tests.AssertPgTableExist(ctx, t, conn, "pre_validation_2")
+			tests.AssertPgTableExist(t, conn, "pre_validation_2")
 		})
 	})
 
@@ -268,17 +266,17 @@ func TestApplyPending(t *testing.T) {
 		optionsCopy.Project.Dir = dir
 		optionsCopy.Limit = 1
 
-		err := migrator.ApplyPending(ctx, optionsCopy, &report)
+		err := migrator.ApplyPending(t.Context(), optionsCopy, &report)
 		require.NoError(t, err)
 
-		tests.AssertPgTableExist(ctx, t, conn, "limit_1")
-		tests.AssertPgTableNotExist(ctx, t, conn, "limit_2")
+		tests.AssertPgTableExist(t, conn, "limit_1")
+		tests.AssertPgTableNotExist(t, conn, "limit_2")
 		assert.Equal(t, 1, report.PendingCount)
 
-		err = migrator.ApplyPending(ctx, optionsCopy, &report)
+		err = migrator.ApplyPending(t.Context(), optionsCopy, &report)
 		require.NoError(t, err)
 
-		tests.AssertPgTableExist(ctx, t, conn, "limit_2")
+		tests.AssertPgTableExist(t, conn, "limit_2")
 		assert.Equal(t, 1, report.PendingCount)
 	})
 }

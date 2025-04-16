@@ -14,6 +14,10 @@ type ValidationError struct {
 	validationResult *gojsonschema.Result
 }
 
+func NewValidationError(result *gojsonschema.Result) *ValidationError {
+	return &ValidationError{validationResult: result}
+}
+
 func (e *ValidationError) Error() string {
 	var stringBuilder strings.Builder
 
@@ -22,10 +26,6 @@ func (e *ValidationError) Error() string {
 	}
 
 	return strings.TrimSpace(stringBuilder.String())
-}
-
-func NewValidationError(result *gojsonschema.Result) *ValidationError {
-	return &ValidationError{validationResult: result}
 }
 
 func LoadFromFile(path string, schema string, out any) error {

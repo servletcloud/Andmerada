@@ -56,5 +56,5 @@ func TestNormalizePath(t *testing.T) {
 	assert.Equal(t, "add_flags_table", osutil.NormalizePath("Add   FLAGS  Table"))
 	assert.Equal(t, "add_type_column", osutil.NormalizePath("~ADD!!Type^^Column@@"))
 	assert.Equal(t, "add.one-two_three", osutil.NormalizePath("add.one-two_three"))
-	assert.Equal(t, "", osutil.NormalizePath("~!@#$%^&*()"))
+	assert.Empty(t, osutil.NormalizePath("~!@#$%^&*()"))
 }

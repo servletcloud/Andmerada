@@ -10,7 +10,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/servletcloud/Andmerada/internal/osutil"
-	"github.com/servletcloud/Andmerada/internal/project"
 	"github.com/servletcloud/Andmerada/internal/schema"
 	"github.com/servletcloud/Andmerada/internal/source"
 	"github.com/servletcloud/Andmerada/internal/ymlutil"
@@ -28,19 +27,21 @@ func TestLint(t *testing.T) { //nolint:funlen
 	timestamp2, err := time.Parse("20060102150405", "20241226122230")
 	require.NoError(t, err)
 
-	t.Run("A project with a migration has no errors", func(t *testing.T) {
+	t.Run("No migrations warning", func(t *testing.T) {
 		t.Parallel()
 
 		dir := t.TempDir()
 
-		require.NoError(t, project.Initialize(dir))
+		report := runLint(dir, nil)
 
-		t.Run("No migrations warning", func(t *testing.T) {
-			report := runLint(dir, nil)
+		assert.Empty(t, report.Errors)
+		assertHasError(t, report.Warings, "No migration files found. Create with:")
+	})
 
-			assert.Empty(t, report.Errors)
-			assertHasError(t, report.Warings, "No migration files found. Create with:")
-		})
+	t.Run("A valid migration found", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
 
 		_, err := source.Create(dir, "Create users table", timestamp)
 		require.NoError(t, err)
@@ -49,86 +50,113 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 		assert.Empty(t, report.Errors)
 		assert.Empty(t, report.Warings)
+	})
 
-		t.Run("No migration.yml file", func(t *testing.T) {
-			migrationDir := createTempMigration(t, dir, timestamp2)
-			path := filepath.Join(dir, migrationDir, "migration.yml")
-			require.NoError(t, os.Remove(path))
+	t.Run("No migration.yml file", func(t *testing.T) {
+		t.Parallel()
 
-			report := runLint(dir, nil)
+		dir := t.TempDir()
 
-			assertHasError(t, report.Errors, "File does not exist")
+		migrationDir := createTempMigration(t, dir, timestamp2)
+		path := filepath.Join(migrationDir, "migration.yml")
+		require.NoError(t, os.Remove(path))
+
+		report := runLint(dir, nil)
+
+		assertHasError(t, report.Errors, "File does not exist")
+	})
+
+	t.Run("up.sql is missing", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+
+		migrationDir := createTempMigration(t, dir, timestamp2)
+		path := filepath.Join(migrationDir, "up.sql")
+		require.NoError(t, os.Remove(path))
+
+		report := runLint(dir, nil)
+
+		assertHasError(t, report.Errors, "File referenced by migration.yml does not exist")
+	})
+
+	t.Run("down.sql is missing", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+
+		migrationDir := createTempMigration(t, dir, timestamp2)
+		path := filepath.Join(migrationDir, "down.sql")
+		require.NoError(t, os.Remove(path))
+
+		report := runLint(dir, nil)
+
+		assertHasError(t, report.Errors, "File referenced by migration.yml does not exist")
+	})
+
+	t.Run("down.sql is missing with down.block=true", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+
+		migrationDir := createTempMigration(t, dir, timestamp2)
+		path := filepath.Join(migrationDir, "down.sql")
+		require.NoError(t, os.Remove(path))
+
+		updateConfig(t, filepath.Join(migrationDir, "migration.yml"), func(conf *source.Configuration) {
+			conf.Down.Block = true
 		})
 
-		t.Run("up.sql is missing", func(t *testing.T) {
-			migrationDir := createTempMigration(t, dir, timestamp2)
-			path := filepath.Join(dir, migrationDir, "up.sql")
-			require.NoError(t, os.Remove(path))
+		report := runLint(dir, nil)
 
-			report := runLint(dir, nil)
+		assert.Empty(t, report.Errors)
+		assert.Empty(t, report.Warings)
+	})
 
-			assertHasError(t, report.Errors, "File referenced by migration.yml does not exist")
-		})
+	t.Run("duplicate migration ID", func(t *testing.T) {
+		t.Parallel()
 
-		t.Run("down.sql is missing", func(t *testing.T) {
-			migrationDir := createTempMigration(t, dir, timestamp2)
-			path := filepath.Join(dir, migrationDir, "down.sql")
-			require.NoError(t, os.Remove(path))
+		dir := t.TempDir()
 
-			report := runLint(dir, nil)
+		_, err := source.Create(dir, "Create users table", timestamp)
+		require.NoError(t, err)
 
-			assertHasError(t, report.Errors, "File referenced by migration.yml does not exist")
-		})
+		dupeFolderPath := filepath.Join(dir, "20241225112129_duplicate_migration")
+		require.NoError(t, os.Mkdir(dupeFolderPath, osutil.DirPerm0755))
 
-		t.Run("down.sql is missing with down.block=true", func(t *testing.T) {
-			migrationDir := createTempMigration(t, dir, timestamp2)
-			path := filepath.Join(dir, migrationDir, "down.sql")
-			require.NoError(t, os.Remove(path))
+		report := runLint(dir, nil)
 
-			updateConfig(t, filepath.Join(dir, migrationDir, "migration.yml"), func(conf *source.Configuration) {
-				conf.Down.Block = true
-			})
+		assertHasError(t, report.Errors, "Duplicate migration ID")
+	})
 
-			report := runLint(dir, nil)
+	t.Run("err of SQL big file size", func(t *testing.T) {
+		t.Parallel()
 
-			assert.Empty(t, report.Errors)
-			assert.Empty(t, report.Warings)
-		})
+		dir := t.TempDir()
 
-		t.Run("duplicate migration ID", func(t *testing.T) {
-			dupeFolderPath := filepath.Join(dir, "20241225112129_duplicate_migration")
-			require.NoError(t, os.Mkdir(dupeFolderPath, osutil.DirPerm0755))
+		migrationDir := createTempMigration(t, dir, timestamp2)
+		path := filepath.Join(migrationDir, "up.sql")
 
-			t.Cleanup(func() {
-				require.NoError(t, os.RemoveAll(dupeFolderPath))
-			})
+		stat, err := os.Stat(path)
+		require.NoError(t, err)
 
-			report := runLint(dir, nil)
+		lintConfig := &source.LintConfiguration{MaxSQLFileSize: stat.Size() - 1} //nolint:exhaustruct
+		report := runLint(dir, lintConfig)
 
-			assertHasError(t, report.Errors, "Duplicate migration ID")
-		})
+		assertHasError(t, report.Errors, "File is too big:")
+	})
 
-		t.Run("err of SQL big file size", func(t *testing.T) {
-			migrationDir := createTempMigration(t, dir, timestamp2)
-			path := filepath.Join(dir, migrationDir, "up.sql")
+	t.Run("warning if there are migrations in the future", func(t *testing.T) {
+		t.Parallel()
 
-			stat, err := os.Stat(path)
-			require.NoError(t, err)
+		dir := t.TempDir()
 
-			lintConfig := &source.LintConfiguration{MaxSQLFileSize: stat.Size() - 1} //nolint:exhaustruct
-			report := runLint(dir, lintConfig)
+		_ = createTempMigration(t, dir, timestamp2)
 
-			assertHasError(t, report.Errors, "File is too big:")
-		})
+		lintConfig := &source.LintConfiguration{NowUTC: timestamp.Add(-1 * time.Second)} //nolint:exhaustruct
+		report := runLint(dir, lintConfig)
 
-		t.Run("warning if there are migrations in the future", func(t *testing.T) {
-			_ = createTempMigration(t, dir, timestamp2)
-
-			lintConfig := &source.LintConfiguration{NowUTC: timestamp.Add(-1 * time.Second)} //nolint:exhaustruct
-			report := runLint(dir, lintConfig)
-
-			assertHasError(t, report.Warings, "There are migrations with timestamps in the future")
-		})
+		assertHasError(t, report.Warings, "There are migrations with timestamps in the future")
 	})
 }
 
@@ -138,12 +166,7 @@ func createTempMigration(t *testing.T, dir string, timestamp time.Time) string {
 	result, err := source.Create(dir, "Create a bad table", timestamp)
 	require.NoError(t, err)
 
-	t.Cleanup(func() {
-		err := os.RemoveAll(filepath.Join(dir, result.BaseDir))
-		require.NoError(t, err)
-	})
-
-	return result.BaseDir
+	return result.FullPath
 }
 
 func assertHasError(t *testing.T, errors []source.LintError, expectedTitle string) {
