@@ -11,7 +11,7 @@ const (
 	idFormatTimeYYYYMMDDHHMMSS = "20060102150405"
 )
 
-func newIDFromTime(t time.Time) uint64 {
+func NewIDFromTime(t time.Time) uint64 {
 	timestamp := t.Format(idFormatTimeYYYYMMDDHHMMSS)
 
 	return newIDFromStringUnsafe(timestamp)

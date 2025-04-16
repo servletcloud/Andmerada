@@ -1,11 +1,14 @@
-package linters
+package linter
 
 import "fmt"
 
 type FutureLinter struct {
-	Reporter
 	Threshold       uint64
 	sourcesInFuture []string
+}
+
+func (linter *linter) newFutureLinter(threshold uint64) *FutureLinter {
+	return &FutureLinter{Threshold: threshold, sourcesInFuture: nil}
 }
 
 func (linter *FutureLinter) LintSource(id uint64, name string) {
@@ -16,7 +19,7 @@ func (linter *FutureLinter) LintSource(id uint64, name string) {
 	linter.sourcesInFuture = append(linter.sourcesInFuture, name)
 }
 
-func (linter *FutureLinter) Report() {
+func (linter *FutureLinter) Report(report *Report) {
 	if len(linter.sourcesInFuture) == 0 {
 		return
 	}
@@ -25,5 +28,5 @@ func (linter *FutureLinter) Report() {
 		"There are migrations with timestamps in the future.\n",
 		"These migrations are pending unless already applied, regardless of their timestamps",
 	)
-	linter.AddWarning(message, linter.sourcesInFuture...)
+	report.AddWarning(message, linter.sourcesInFuture...)
 }

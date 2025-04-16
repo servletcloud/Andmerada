@@ -1,4 +1,4 @@
-package linters_test
+package linter_test
 
 import (
 	"fmt"
@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/servletcloud/Andmerada/internal/linter"
 	"github.com/servletcloud/Andmerada/internal/osutil"
-	"github.com/servletcloud/Andmerada/internal/source/linters"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,26 +25,26 @@ func TestSqlLinter(t *testing.T) { //nolint:funlen
 	t.Run("SQL File is valid", func(t *testing.T) {
 		t.Parallel()
 
-		report := &TestLintReport{}
-		linter := &linters.SQLLinter{Reporter: report, ProjectDir: dir, MaxSQLFileSize: sqlContentSize}
+		report := linter.Report{}
+		linter := &linter.SQLLinter{ProjectDir: dir, MaxSQLFileSize: sqlContentSize}
 
-		linter.Lint("up.sql")
+		linter.Lint(&report, "up.sql")
 
-		assert.Empty(t, report.errors)
-		assert.Empty(t, report.warnings)
+		assert.Empty(t, report.Errors)
+		assert.Empty(t, report.Warnings)
 	})
 
 	//nolint:exhaustruct
 	t.Run("No file exist", func(t *testing.T) {
 		t.Parallel()
 
-		report := &TestLintReport{}
-		linter := &linters.SQLLinter{Reporter: report, ProjectDir: dir}
+		report := linter.Report{}
+		linter := &linter.SQLLinter{ProjectDir: dir}
 
-		linter.Lint("this-file-does-not-exist.sql")
+		linter.Lint(&report, "this-file-does-not-exist.sql")
 
-		assert.Contains(t, report.errors, "File referenced by migration.yml does not exist")
-		assert.Empty(t, report.warnings)
+		assertContainsError(t, report.Errors, "File referenced by migration.yml does not exist")
+		assert.Empty(t, report.Warnings)
 	})
 
 	//nolint:exhaustruct
@@ -53,13 +53,13 @@ func TestSqlLinter(t *testing.T) { //nolint:funlen
 
 		require.NoError(t, os.Mkdir(filepath.Join(dir, "sql-up-sub-directory"), osutil.DirPerm0755))
 
-		report := &TestLintReport{}
-		linter := &linters.SQLLinter{Reporter: report, ProjectDir: dir}
+		report := linter.Report{}
+		linter := &linter.SQLLinter{ProjectDir: dir}
 
-		linter.Lint("sql-up-sub-directory")
+		linter.Lint(&report, "sql-up-sub-directory")
 
-		assert.Contains(t, report.errors, "Must be a file but is a directory")
-		assert.Empty(t, report.warnings)
+		assertContainsError(t, report.Errors, "Must be a file but is a directory")
+		assert.Empty(t, report.Warnings)
 	})
 
 	//nolint:exhaustruct
@@ -68,14 +68,14 @@ func TestSqlLinter(t *testing.T) { //nolint:funlen
 
 		maxSize := sqlContentSize - 1
 
-		report := &TestLintReport{}
-		linter := &linters.SQLLinter{Reporter: report, ProjectDir: dir, MaxSQLFileSize: maxSize}
+		report := linter.Report{}
+		linter := &linter.SQLLinter{ProjectDir: dir, MaxSQLFileSize: maxSize}
 
-		linter.Lint("up.sql")
+		linter.Lint(&report, "up.sql")
 
 		expectedError := fmt.Sprintf("File is too big: %v B exceeds the limit of %v B", sqlContentSize, maxSize)
-		assert.Contains(t, report.errors, expectedError)
-		assert.Empty(t, report.warnings)
+		assertContainsError(t, report.Errors, expectedError)
+		assert.Empty(t, report.Warnings)
 	})
 
 	//nolint:exhaustruct
@@ -85,31 +85,30 @@ func TestSqlLinter(t *testing.T) { //nolint:funlen
 		path := filepath.Join(dir, "empty-up.sql")
 		require.NoError(t, osutil.WriteFileExcl(path, ""))
 
-		report := &TestLintReport{}
-		linter := &linters.SQLLinter{Reporter: report, ProjectDir: dir, ErrEmptyMsg: "File is empty"}
+		report := linter.Report{}
+		linter := &linter.SQLLinter{ProjectDir: dir, ErrEmptyMsg: "File is empty"}
 
-		linter.Lint("empty-up.sql")
+		linter.Lint(&report, "empty-up.sql")
 
-		assert.Empty(t, report.errors)
-		assert.Contains(t, report.warnings, "File is empty")
+		assert.Empty(t, report.Errors)
+		assertContainsError(t, report.Warnings, "File is empty")
 	})
 
 	//nolint:exhaustruct
 	t.Run("File equals its template", func(t *testing.T) {
 		t.Parallel()
 
-		report := &TestLintReport{}
-		linter := &linters.SQLLinter{
-			Reporter:            report,
+		report := linter.Report{}
+		linter := &linter.SQLLinter{
 			ProjectDir:          dir,
 			MaxSQLFileSize:      sqlContentSize,
 			CreatedFromTemplate: []byte(sqlContent),
 			ErrUntouchedMsg:     "File is untouched",
 		}
 
-		linter.Lint("up.sql")
+		linter.Lint(&report, "up.sql")
 
-		assert.Empty(t, report.errors)
-		assert.Contains(t, report.warnings, "File is untouched")
+		assert.Empty(t, report.Errors)
+		assertContainsError(t, report.Warnings, "File is untouched")
 	})
 }
