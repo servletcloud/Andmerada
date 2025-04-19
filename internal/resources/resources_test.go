@@ -50,8 +50,8 @@ func TestMigrationYMLTemplateMatchesSchema(t *testing.T) {
 func TestMsgMigrationCreated(t *testing.T) {
 	t.Parallel()
 
-	content := resources.MsgMigrationCreated("20060102150405_create_users")
+	content := resources.MsgMigrationCreated("20241225112129_create_users")
 
-	assert.Contains(t, content, "Migration successfully created at 20060102150405_create_users")
+	assert.Contains(t, content, "Migration successfully created at 20241225112129_create_users")
 	tests.AssertPlaceholdersResolved(t, content)
 }

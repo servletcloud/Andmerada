@@ -7,10 +7,11 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/servletcloud/Andmerada/internal/migrator/sqlres"
+	"github.com/servletcloud/Andmerada/internal/source"
 )
 
 type Migration struct {
-	ID              uint64
+	ID              source.ID
 	Name            string
 	AppliedAt       time.Time
 	SQLUp           string
@@ -39,8 +40,8 @@ func (m *Migrations) RunDDL(ctx context.Context, conn *pgx.Conn) error {
 func (m *Migrations) ScanApplied(
 	ctx context.Context,
 	conn *pgx.Conn,
-	minID, maxID uint64,
-) ([]uint64, error) {
+	minID, maxID source.ID,
+) ([]source.ID, error) {
 	queryTemplate := "SELECT id FROM %s WHERE id >= $1 AND id <= $2"
 	query := fmt.Sprintf(queryTemplate, m.TableName)
 
@@ -50,7 +51,7 @@ func (m *Migrations) ScanApplied(
 		return nil, &ExecSQLError{Cause: err, SQL: query}
 	}
 
-	ids, err := pgx.CollectRows(rows, pgx.RowTo[uint64])
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[source.ID])
 
 	if err != nil {
 		return nil, &ExecSQLError{Cause: err, SQL: query}

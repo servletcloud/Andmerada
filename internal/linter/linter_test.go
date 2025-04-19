@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/servletcloud/Andmerada/internal/linter"
@@ -22,11 +21,9 @@ import (
 func TestLint(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
-	timestamp, err := time.Parse("20060102150405", "20241225112129")
-	require.NoError(t, err)
-
-	timestamp2, err := time.Parse("20060102150405", "20241226122230")
-	require.NoError(t, err)
+	beforeID1 := source.NewIDFromString("20241225112128")
+	id1 := source.NewIDFromString("20241225112129")
+	id2 := source.NewIDFromString("20241226122230")
 
 	t.Run("No migrations warning", func(t *testing.T) {
 		t.Parallel()
@@ -44,7 +41,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 		dir := t.TempDir()
 
-		_, err := source.Create(dir, "Create users table", timestamp)
+		_, err := source.Create(dir, "Create users table", id1)
 		require.NoError(t, err)
 
 		report := runLint(dir, nil)
@@ -58,7 +55,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 		dir := t.TempDir()
 
-		migrationDir := createTempMigration(t, dir, timestamp2)
+		migrationDir := createTempMigration(t, dir, id2)
 		path := filepath.Join(migrationDir, "migration.yml")
 		require.NoError(t, os.Remove(path))
 
@@ -72,7 +69,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 		dir := t.TempDir()
 
-		migrationDir := createTempMigration(t, dir, timestamp2)
+		migrationDir := createTempMigration(t, dir, id2)
 		path := filepath.Join(migrationDir, "up.sql")
 		require.NoError(t, os.Remove(path))
 
@@ -86,7 +83,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 		dir := t.TempDir()
 
-		migrationDir := createTempMigration(t, dir, timestamp2)
+		migrationDir := createTempMigration(t, dir, id2)
 		path := filepath.Join(migrationDir, "down.sql")
 		require.NoError(t, os.Remove(path))
 
@@ -100,7 +97,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 		dir := t.TempDir()
 
-		migrationDir := createTempMigration(t, dir, timestamp2)
+		migrationDir := createTempMigration(t, dir, id2)
 		path := filepath.Join(migrationDir, "down.sql")
 		require.NoError(t, os.Remove(path))
 
@@ -119,7 +116,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 		dir := t.TempDir()
 
-		_, err := source.Create(dir, "Create users table", timestamp)
+		_, err := source.Create(dir, "Create users table", id1)
 		require.NoError(t, err)
 
 		dupeFolderPath := filepath.Join(dir, "20241225112129_duplicate_migration")
@@ -135,7 +132,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 		dir := t.TempDir()
 
-		migrationDir := createTempMigration(t, dir, timestamp2)
+		migrationDir := createTempMigration(t, dir, id2)
 		path := filepath.Join(migrationDir, "up.sql")
 
 		stat, err := os.Stat(path)
@@ -152,19 +149,19 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 		dir := t.TempDir()
 
-		_ = createTempMigration(t, dir, timestamp2)
+		_ = createTempMigration(t, dir, id2)
 
-		lintConfig := &linter.Configuration{NowUTC: timestamp.Add(-1 * time.Second)} //nolint:exhaustruct
+		lintConfig := &linter.Configuration{NowID: beforeID1} //nolint:exhaustruct
 		report := runLint(dir, lintConfig)
 
 		assertHasError(t, report.Warnings, "There are migrations with timestamps in the future")
 	})
 }
 
-func createTempMigration(t *testing.T, dir string, timestamp time.Time) string {
+func createTempMigration(t *testing.T, dir string, id source.ID) string {
 	t.Helper()
 
-	result, err := source.Create(dir, "Create a bad table", timestamp)
+	result, err := source.Create(dir, "Create a bad table", id)
 	require.NoError(t, err)
 
 	return result.FullPath
@@ -184,14 +181,14 @@ func runLint(dir string, configOverride *linter.Configuration) linter.Report {
 	config := linter.Configuration{
 		ProjectDir:      dir,
 		MaxSQLFileSize:  1 * humanize.KiByte,
-		NowUTC:          time.Now(),
+		NowID:           source.NewIDFromNow(),
 		UpSQLTemplate:   "create table users;",
 		DownSQLTemplate: "drop table users",
 	}
 
 	if configOverride != nil {
 		config.MaxSQLFileSize = configOverride.MaxSQLFileSize
-		config.NowUTC = configOverride.NowUTC
+		config.NowID = configOverride.NowID
 	}
 
 	report := linter.Report{} //nolint:exhaustruct

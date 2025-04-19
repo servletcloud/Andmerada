@@ -40,7 +40,7 @@ func NewIDFilter(expression string, now time.Time) (IDFilter, error) {
 	return IDFilter{expression: expression, program: program, now: now}, nil
 }
 
-func (filter *IDFilter) Test(id uint64) (bool, error) {
+func (filter *IDFilter) Test(id ID) (bool, error) {
 	env := filter.createEnv(id)
 
 	result, err := expr.Run(filter.program, &env)
@@ -52,24 +52,22 @@ func (filter *IDFilter) Test(id uint64) (bool, error) {
 	return result.(bool), nil //nolint:forcetypeassert
 }
 
-func (filter *IDFilter) createEnv(id uint64) env {
-	now := filter.now
-	sid := idToString(id)
-	createdAt, err := time.Parse(idFormatTimeYYYYMMDDHHMMSS, sid)
+func (filter *IDFilter) createEnv(id ID) env {
+	createdAt, err := id.Time()
 
 	if err != nil {
 		panic(err)
 	}
 
 	result := env{
-		ID:        id,
-		Sid:       sid,
+		ID:        id.Uint64(),
+		Sid:       id.String(),
 		CreatedAt: createdAt,
 		Age:       nil,
 		AgeDays:   nil,
 	}
 
-	if createdAt.Before(now) {
+	if now := filter.now; createdAt.Before(now) {
 		const hoursInDay = 24
 
 		age := now.Sub(createdAt)

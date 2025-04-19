@@ -3,7 +3,6 @@ package linter
 import (
 	"fmt"
 	"path/filepath"
-	"time"
 
 	"github.com/servletcloud/Andmerada/internal/source"
 )
@@ -11,7 +10,7 @@ import (
 type Configuration struct {
 	ProjectDir      string
 	MaxSQLFileSize  int64
-	NowUTC          time.Time
+	NowID           source.ID
 	UpSQLTemplate   string
 	DownSQLTemplate string
 }
@@ -35,7 +34,7 @@ func (linter *linter) lint(report *Report) error {
 	duplicatesLinter := NewDupeLinter()
 	defer duplicatesLinter.Report(report)
 
-	futureLinter := linter.newFutureLinter(source.NewIDFromTime(linter.NowUTC))
+	futureLinter := linter.newFutureLinter(linter.NowID)
 	defer futureLinter.Report(report)
 
 	countLinter := &CountLinter{} //nolint:exhaustruct
@@ -45,7 +44,7 @@ func (linter *linter) lint(report *Report) error {
 	upSQLLinter := linter.newUpSQLLinter()
 	downSQLLinter := linter.newDownSQLLinter()
 
-	return source.TraverseAll(linter.ProjectDir, func(id uint64, name string) { //nolint:wrapcheck
+	return source.TraverseAll(linter.ProjectDir, func(id source.ID, name string) { //nolint:wrapcheck
 		duplicatesLinter.LintSource(id, name)
 		futureLinter.LintSource(id, name)
 		countLinter.LintSource()

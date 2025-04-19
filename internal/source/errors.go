@@ -52,7 +52,7 @@ func (e *CompileFilterError) Unwrap() error {
 
 type RunFilterError struct {
 	Expression string
-	ID         uint64
+	ID         ID
 	Err        error
 }
 

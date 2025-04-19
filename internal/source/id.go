@@ -1,28 +1,25 @@
 package source
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 	"unicode"
 )
 
 const (
-	idLength                   = 14
-	idFormatTimeYYYYMMDDHHMMSS = "20060102150405"
+	IDFormatTimeYYYYMMDDHHMMSS = "20060102150405"
+	EmptyMigrationID           = ID(0)
+	MaxMigrationID             = ID(99991231235959)
+	MinMigrationID             = ID(0)
+
+	idLength = 14
 )
 
-func NewIDFromTime(t time.Time) uint64 {
-	timestamp := t.Format(idFormatTimeYYYYMMDDHHMMSS)
+type ID uint64
 
-	return newIDFromStringUnsafe(timestamp)
-}
-
-func idToString(id uint64) string {
-	return strconv.FormatUint(id, 10)
-}
-
-func newIDFromString(str string) uint64 {
-	if len(str) < idLength+1 {
+func NewIDFromString(str string) ID {
+	if len(str) < idLength {
 		return EmptyMigrationID
 	}
 
@@ -32,18 +29,44 @@ func newIDFromString(str string) uint64 {
 		}
 	}
 
-	if str[14] != '_' {
-		return EmptyMigrationID
-	}
-
 	return newIDFromStringUnsafe(str[:14])
 }
 
-func newIDFromStringUnsafe(s string) uint64 {
+func NewIDFromNow() ID {
+	return NewIDFromTime(time.Now().UTC())
+}
+
+func NewIDFromTime(t time.Time) ID {
+	timestamp := t.Format(IDFormatTimeYYYYMMDDHHMMSS)
+
+	return newIDFromStringUnsafe(timestamp)
+}
+
+func (id ID) String() string {
+	return strconv.FormatUint(uint64(id), 10)
+}
+
+func (id ID) Time() (time.Time, error) {
+	timestamp := id.String()
+
+	result, err := time.Parse(IDFormatTimeYYYYMMDDHHMMSS, timestamp)
+
+	if err != nil {
+		return time.Time{}, fmt.Errorf("cannot parse ID %v as time: %w", id, err)
+	}
+
+	return result, nil
+}
+
+func (id ID) Uint64() uint64 {
+	return uint64(id)
+}
+
+func newIDFromStringUnsafe(s string) ID {
 	id, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
 		panic(err)
 	}
 
-	return id
+	return ID(id)
 }

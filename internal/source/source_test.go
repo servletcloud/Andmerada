@@ -15,15 +15,14 @@ func TestCreateMigration(t *testing.T) {
 	t.Parallel()
 
 	name := "Add users table!"
-	timestamp, err := time.Parse("20060102150405", "20241225112129")
-	require.NoError(t, err)
+	id := source.NewIDFromString("20241225112129")
 
 	t.Run("creates migration file structure", func(t *testing.T) {
 		t.Parallel()
 
 		projectDir := t.TempDir()
 
-		result, err := source.Create(projectDir, name, timestamp)
+		result, err := source.Create(projectDir, name, id)
 		require.NoError(t, err)
 
 		assert.Equal(t, "20241225112129_add_users_table", result.BaseDir)
@@ -39,7 +38,7 @@ func TestCreateMigration(t *testing.T) {
 
 		tests.MkDir(t, filepath.Join(projectDir, "20241225112129_conflicting_migration"))
 
-		_, err = source.Create(projectDir, name, timestamp)
+		_, err := source.Create(projectDir, name, id)
 		require.ErrorIs(t, err, source.ErrSourceAlreadyExists)
 
 		migrationDir := filepath.Join(projectDir, "20241225112129_add_users_table")
@@ -53,7 +52,7 @@ func TestCreateMigration(t *testing.T) {
 
 		tests.MkDir(t, filepath.Join(projectDir, "29991225112129_migration_from_year_2999"))
 
-		result, err := source.Create(projectDir, name, timestamp)
+		result, err := source.Create(projectDir, name, id)
 		require.NoError(t, err)
 
 		assert.Equal(t, "20241225112129_add_users_table", result.BaseDir)
@@ -66,19 +65,19 @@ func TestCreateMigration(t *testing.T) {
 func TestNewIDFromTime(t *testing.T) {
 	t.Parallel()
 
-	timestamp, err := time.Parse("20060102150405", "20241225112129")
+	timestamp, err := time.Parse(source.IDFormatTimeYYYYMMDDHHMMSS, "20241225112129")
 	require.NoError(t, err)
 
-	assert.Equal(t, uint64(20241225112129), source.NewIDFromTime(timestamp))
+	assert.Equal(t, source.ID(20241225112129), source.NewIDFromTime(timestamp))
 }
 
 func TestNewIDFromString(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, uint64(20060102150405), source.NewIDFromString("20060102150405_create_users"))
+	assert.Equal(t, source.ID(20230122110947), source.NewIDFromString("20230122110947_create_users"))
+	assert.Equal(t, source.ID(20230122110947), source.NewIDFromString("20230122110947create_users"))
+	assert.Equal(t, source.ID(20230122110947), source.NewIDFromString("20230122110947_create_users"))
 	assert.Equal(t, source.EmptyMigrationID, source.NewIDFromString("2006010215040_create_users"))
-	assert.Equal(t, source.EmptyMigrationID, source.NewIDFromString("200601021504056_create_users"))
-	assert.Equal(t, source.EmptyMigrationID, source.NewIDFromString("20060102150405create_users"))
 }
 
 func assertMigrationFilesCreated(t *testing.T, dir string) {

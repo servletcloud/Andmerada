@@ -152,7 +152,7 @@ func TestApplyPending(t *testing.T) {
 				row := conn.QueryRow(t.Context(), query)
 
 				var (
-					id        uint64
+					id        source.ID
 					name      string
 					appliedAt time.Time
 				)
@@ -160,7 +160,7 @@ func TestApplyPending(t *testing.T) {
 				err := row.Scan(&id, &name, &appliedAt)
 				require.NoError(t, err)
 
-				assert.Equal(t, uint64(20250109025508), id)
+				assert.Equal(t, source.ID(20250109025508), id)
 				assert.Equal(t, "Dummy migration", name)
 				assert.False(t, appliedAt.IsZero())
 			})

@@ -12,7 +12,7 @@ import (
 func Test_Test(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
-	now20250101, err := time.Parse("20060102150405", "20250101000000")
+	now20250101, err := time.Parse(source.IDFormatTimeYYYYMMDDHHMMSS, "20250101000000")
 	require.NoError(t, err)
 
 	newFilter := func(expression string, now time.Time) source.IDFilter {
@@ -22,7 +22,7 @@ func Test_Test(t *testing.T) { //nolint:funlen
 		return filter
 	}
 
-	callTest := func(filter *source.IDFilter, id uint64) bool {
+	callTest := func(filter *source.IDFilter, id source.ID) bool {
 		result, err := filter.Test(id)
 		require.NoError(t, err)
 
@@ -244,7 +244,7 @@ func Test_Test(t *testing.T) { //nolint:funlen
 
 			require.ErrorAs(t, err, &runError)
 			assert.Equal(t, "ageDays < 280", runError.Expression)
-			assert.Equal(t, uint64(20250101000001), runError.ID)
+			assert.Equal(t, source.ID(20250101000001), runError.ID)
 		})
 	})
 }

@@ -20,10 +20,10 @@ func TestScanner_Traverse(t *testing.T) {
 
 		createTestMigrationStructure(t, dir)
 
-		receivedIDs := make([]uint64, 0)
+		receivedIDs := make([]source.ID, 0)
 		receivedNames := make([]string, 0)
 
-		err := source.Traverse(dir, func(id uint64, name string) bool {
+		err := source.Traverse(dir, func(id source.ID, name string) bool {
 			receivedIDs = append(receivedIDs, id)
 			receivedNames = append(receivedNames, name)
 
@@ -31,14 +31,14 @@ func TestScanner_Traverse(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		expectedIDs := []uint64{
-			20060102150405,
+		expectedIDs := []source.ID{
+			20230122110947,
 			20241225112129,
 		}
 		assert.Equal(t, expectedIDs, receivedIDs)
 
 		expectedNames := []string{
-			"20060102150405_create_users",
+			"20230122110947_create_users",
 			"20241225112129_create_orders",
 		}
 		assert.Equal(t, expectedNames, receivedNames)
@@ -49,7 +49,7 @@ func TestScanner_Traverse(t *testing.T) {
 
 		dir := t.TempDir()
 
-		err := source.Traverse(dir, func(_ uint64, _ string) bool {
+		err := source.Traverse(dir, func(_ source.ID, _ string) bool {
 			assert.Fail(t, "No IDs must be found in an empty directory")
 
 			return true
@@ -72,8 +72,8 @@ func TestScanner_ScanAll(t *testing.T) {
 		received, err := source.ScanAll(dir)
 		require.NoError(t, err)
 
-		expected := map[uint64]string{
-			20060102150405: "20060102150405_create_users",
+		expected := map[source.ID]string{
+			20230122110947: "20230122110947_create_users",
 			20241225112129: "20241225112129_create_orders",
 		}
 		assert.Equal(t, expected, received)
@@ -84,7 +84,7 @@ func createTestMigrationStructure(t *testing.T, dir string) {
 	t.Helper()
 
 	subDirs := []string{
-		"20060102150405_create_users",
+		"20230122110947_create_users",
 		"20241225112129_create_orders",
 		".templates",
 		".history",
@@ -93,7 +93,7 @@ func createTestMigrationStructure(t *testing.T, dir string) {
 	files := []string{
 		"andmerada.yml",
 		".gitignore",
-		"20060102150405_create_users.txt",
+		"20230122110947_create_users.txt",
 	}
 
 	for _, subDir := range subDirs {

@@ -6,7 +6,6 @@ import (
 	"iter"
 	"log"
 	"maps"
-	"math"
 	"path/filepath"
 	"slices"
 	"time"
@@ -46,7 +45,7 @@ type applier struct {
 }
 
 type sourceRef struct {
-	id   uint64
+	id   source.ID
 	name string
 }
 
@@ -128,8 +127,11 @@ func (applier *applier) runDDL(ctx context.Context) error {
 	return applier.migrationsRepo.RunDDL(ctx, applier.connection)
 }
 
-func (applier *applier) scanAppliedMigrations(ctx context.Context, availableIDs iter.Seq[uint64]) ([]uint64, error) {
-	idMin, idMax := uint64(math.MaxUint64), uint64(0)
+func (applier *applier) scanAppliedMigrations(
+	ctx context.Context,
+	availableIDs iter.Seq[source.ID],
+) ([]source.ID, error) {
+	idMin, idMax := source.MinMigrationID, source.MaxMigrationID
 
 	for id := range availableIDs {
 		idMin = min(idMin, id)
@@ -139,7 +141,7 @@ func (applier *applier) scanAppliedMigrations(ctx context.Context, availableIDs 
 	return applier.migrationsRepo.ScanApplied(ctx, applier.connection, idMin, idMax)
 }
 
-func (applier *applier) toSortedSourceRefs(sources map[uint64]string) []sourceRef {
+func (applier *applier) toSortedSourceRefs(sources map[source.ID]string) []sourceRef {
 	result := make([]sourceRef, 0, len(sources))
 
 	for id, name := range sources {

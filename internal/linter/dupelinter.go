@@ -1,16 +1,20 @@
 package linter
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/servletcloud/Andmerada/internal/source"
+)
 
 type DupeLinter struct {
-	idToNames map[uint64][]string
+	idToNames map[source.ID][]string
 }
 
 func NewDupeLinter() DupeLinter {
-	return DupeLinter{idToNames: make(map[uint64][]string)}
+	return DupeLinter{idToNames: make(map[source.ID][]string)}
 }
 
-func (linter *DupeLinter) LintSource(id uint64, name string) {
+func (linter *DupeLinter) LintSource(id source.ID, name string) {
 	linter.idToNames[id] = append(linter.idToNames[id], name)
 }
 
