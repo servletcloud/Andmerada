@@ -1,9 +1,8 @@
-package linters
+package linter
 
 import "fmt"
 
 type CountLinter struct {
-	Reporter
 	hasMigrations bool
 }
 
@@ -11,7 +10,7 @@ func (linter *CountLinter) LintSource() {
 	linter.hasMigrations = true
 }
 
-func (linter *CountLinter) Report() {
+func (linter *CountLinter) Report(report *Report) {
 	if linter.hasMigrations {
 		return
 	}
@@ -20,5 +19,5 @@ func (linter *CountLinter) Report() {
 		"No migration files found. Create with:\n",
 		`andmerada create-migration "Add users table"`,
 	)
-	linter.AddWarning(message)
+	report.AddWarning(message)
 }

@@ -23,6 +23,7 @@ linters:
             - github.com/jackc/pgerrcode
             - github.com/jackc/pgx/v5
             - github.com/servletcloud/Andmerada/internal/cmd
+            - github.com/servletcloud/Andmerada/internal/linter
             - github.com/servletcloud/Andmerada/internal/migrator
             - github.com/servletcloud/Andmerada/internal/osutil
             - github.com/servletcloud/Andmerada/internal/project

@@ -1,4 +1,4 @@
-package source_test
+package linter_test
 
 import (
 	"os"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/servletcloud/Andmerada/internal/linter"
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/schema"
 	"github.com/servletcloud/Andmerada/internal/source"
@@ -35,7 +36,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 		report := runLint(dir, nil)
 
 		assert.Empty(t, report.Errors)
-		assertHasError(t, report.Warings, "No migration files found. Create with:")
+		assertHasError(t, report.Warnings, "No migration files found. Create with:")
 	})
 
 	t.Run("A valid migration found", func(t *testing.T) {
@@ -49,7 +50,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 		report := runLint(dir, nil)
 
 		assert.Empty(t, report.Errors)
-		assert.Empty(t, report.Warings)
+		assert.Empty(t, report.Warnings)
 	})
 
 	t.Run("No migration.yml file", func(t *testing.T) {
@@ -110,7 +111,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 		report := runLint(dir, nil)
 
 		assert.Empty(t, report.Errors)
-		assert.Empty(t, report.Warings)
+		assert.Empty(t, report.Warnings)
 	})
 
 	t.Run("duplicate migration ID", func(t *testing.T) {
@@ -140,7 +141,7 @@ func TestLint(t *testing.T) { //nolint:funlen
 		stat, err := os.Stat(path)
 		require.NoError(t, err)
 
-		lintConfig := &source.LintConfiguration{MaxSQLFileSize: stat.Size() - 1} //nolint:exhaustruct
+		lintConfig := &linter.Configuration{MaxSQLFileSize: stat.Size() - 1} //nolint:exhaustruct
 		report := runLint(dir, lintConfig)
 
 		assertHasError(t, report.Errors, "File is too big:")
@@ -153,10 +154,10 @@ func TestLint(t *testing.T) { //nolint:funlen
 
 		_ = createTempMigration(t, dir, timestamp2)
 
-		lintConfig := &source.LintConfiguration{NowUTC: timestamp.Add(-1 * time.Second)} //nolint:exhaustruct
+		lintConfig := &linter.Configuration{NowUTC: timestamp.Add(-1 * time.Second)} //nolint:exhaustruct
 		report := runLint(dir, lintConfig)
 
-		assertHasError(t, report.Warings, "There are migrations with timestamps in the future")
+		assertHasError(t, report.Warnings, "There are migrations with timestamps in the future")
 	})
 }
 
@@ -169,18 +170,18 @@ func createTempMigration(t *testing.T, dir string, timestamp time.Time) string {
 	return result.FullPath
 }
 
-func assertHasError(t *testing.T, errors []source.LintError, expectedTitle string) {
+func assertHasError(t *testing.T, errors []linter.LintError, expectedTitle string) {
 	t.Helper()
 
-	found := slices.ContainsFunc(errors, func(lintError source.LintError) bool {
+	found := slices.ContainsFunc(errors, func(lintError linter.LintError) bool {
 		return strings.Contains(lintError.Title, expectedTitle)
 	})
 
 	assert.True(t, found, "No errors contain title: %v\n. Actual errors: %v", expectedTitle, errors)
 }
 
-func runLint(dir string, configOverride *source.LintConfiguration) *source.LintReport {
-	config := source.LintConfiguration{
+func runLint(dir string, configOverride *linter.Configuration) linter.Report {
+	config := linter.Configuration{
 		ProjectDir:      dir,
 		MaxSQLFileSize:  1 * humanize.KiByte,
 		NowUTC:          time.Now(),
@@ -193,9 +194,9 @@ func runLint(dir string, configOverride *source.LintConfiguration) *source.LintR
 		config.NowUTC = configOverride.NowUTC
 	}
 
-	report := new(source.LintReport)
+	report := linter.Report{} //nolint:exhaustruct
 
-	if err := source.Lint(config, report); err != nil {
+	if err := linter.Run(config, &report); err != nil {
 		panic(err)
 	}
 
@@ -217,4 +218,14 @@ func updateConfig(t *testing.T, path string, callback func(config *source.Config
 
 	err = os.WriteFile(path, toUpdate, osutil.FilePerm0644)
 	require.NoError(t, err)
+}
+
+func assertContainsError(t *testing.T, errors []linter.LintError, expectedTitle string) {
+	t.Helper()
+
+	found := slices.ContainsFunc(errors, func(lintError linter.LintError) bool {
+		return strings.Contains(lintError.Title, expectedTitle)
+	})
+
+	assert.True(t, found, "No errors contain title: %v\n. Actual errors: %v", expectedTitle, errors)
 }

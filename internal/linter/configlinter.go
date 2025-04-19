@@ -1,4 +1,4 @@
-package linters
+package linter
 
 import (
 	"errors"
@@ -12,11 +12,10 @@ import (
 )
 
 type ConfigLinter struct {
-	Reporter
 	ProjectDir string
 }
 
-func (linter *ConfigLinter) Lint(relative string, configuration any) bool {
+func (linter *ConfigLinter) Lint(report *Report, relative string, configuration any) bool {
 	path := filepath.Join(linter.ProjectDir, relative)
 
 	err := ymlutil.LoadFromFile(path, schema.GetMigrationSchema(), configuration)
@@ -26,7 +25,7 @@ func (linter *ConfigLinter) Lint(relative string, configuration any) bool {
 	}
 
 	errorMessage := linter.translateError(err)
-	linter.AddError(errorMessage, relative)
+	report.AddError(errorMessage, relative)
 
 	return false
 }
