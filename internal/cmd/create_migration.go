@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"log"
-	"time"
 
 	"github.com/servletcloud/Andmerada/internal/cmd/descriptions"
 	"github.com/servletcloud/Andmerada/internal/osutil"
@@ -24,11 +23,11 @@ func createMigrationCommand() *cobra.Command {
 		Run: func(_ *cobra.Command, args []string) {
 			currentDir := osutil.GetwdOrPanic()
 			name := args[0]
-			now := time.Now().UTC()
+			id := source.NewIDFromNow()
 
 			ensureProjectInitialized(currentDir)
 
-			result, err := source.Create(currentDir, name, now)
+			result, err := source.Create(currentDir, name, id)
 
 			if err != nil {
 				if errors.Is(err, source.ErrSourceAlreadyExists) {

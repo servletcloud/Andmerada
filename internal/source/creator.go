@@ -4,19 +4,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 	"unicode/utf8"
 
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/resources"
 )
 
-func create(projectDir string, name string, time time.Time) (CreateSourceResult, error) {
+func create(projectDir string, name string, id ID) (CreateSourceResult, error) {
 	if utf8.RuneCountInString(name) > MaxNameLength {
 		return CreateSourceResult{}, ErrNameExceeds255
 	}
 
-	id := NewIDFromTime(time)
 	latest, err := verifyIDUnique(id, projectDir)
 
 	if err != nil {
@@ -33,12 +31,12 @@ func create(projectDir string, name string, time time.Time) (CreateSourceResult,
 	return CreateSourceResult{BaseDir: baseMigrationDir, FullPath: migrationDir, Latest: latest}, nil
 }
 
-func verifyIDUnique(newID uint64, projectDir string) (bool, error) {
+func verifyIDUnique(newID ID, projectDir string) (bool, error) {
 	unique := true
 	collidesWith := ""
 	latest := true
 
-	err := Traverse(projectDir, func(existingID uint64, name string) bool {
+	err := Traverse(projectDir, func(existingID ID, name string) bool {
 		if newID == existingID {
 			unique = false
 			collidesWith = name

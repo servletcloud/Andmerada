@@ -2,7 +2,6 @@ package source
 
 import (
 	"errors"
-	"time"
 )
 
 type CreateSourceResult struct {
@@ -39,8 +38,6 @@ const (
 	MigrationYmlFilename = "migration.yml"
 	UpSQLFilename        = "up.sql"
 	DownSQLFilename      = "down.sql"
-
-	EmptyMigrationID = uint64(0)
 )
 
 var (
@@ -48,10 +45,6 @@ var (
 	ErrSourceAlreadyExists = errors.New("a migration with the same ID already exists")
 )
 
-func NewIDFromString(str string) uint64 {
-	return newIDFromString(str)
-}
-
-func Create(projectDir string, name string, time time.Time) (CreateSourceResult, error) {
-	return create(projectDir, name, time)
+func Create(projectDir string, name string, id ID) (CreateSourceResult, error) {
+	return create(projectDir, name, id)
 }

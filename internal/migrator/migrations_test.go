@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/servletcloud/Andmerada/internal/migrator"
 	"github.com/servletcloud/Andmerada/internal/migrator/sqlres"
+	"github.com/servletcloud/Andmerada/internal/source"
 	"github.com/servletcloud/Andmerada/internal/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,7 @@ func TestMigrations_ScanApplied(t *testing.T) {
 
 	migrations := &migrator.Migrations{TableName: "migrations"}
 
-	scanAppliedMigrations := func(t *testing.T, minID, maxID uint64) []uint64 {
+	scanAppliedMigrations := func(t *testing.T, minID, maxID source.ID) []source.ID {
 		t.Helper()
 
 		result, err := migrations.ScanApplied(t.Context(), conn, minID, maxID)
@@ -45,16 +46,16 @@ func TestMigrations_ScanApplied(t *testing.T) {
 			actual := scanAppliedMigrations(t, 20241225112129, 20241225112131)
 
 			assert.Len(t, actual, 3)
-			assert.Contains(t, actual, uint64(20241225112129))
-			assert.Contains(t, actual, uint64(20241225112130))
-			assert.Contains(t, actual, uint64(20241225112131))
+			assert.Contains(t, actual, source.ID(20241225112129))
+			assert.Contains(t, actual, source.ID(20241225112130))
+			assert.Contains(t, actual, source.ID(20241225112131))
 		})
 
 		t.Run("filter includes the boundary values", func(t *testing.T) {
 			actual := scanAppliedMigrations(t, 20241225112130, 20241225112130)
 
 			assert.Len(t, actual, 1)
-			assert.Contains(t, actual, uint64(20241225112130))
+			assert.Contains(t, actual, source.ID(20241225112130))
 		})
 	})
 }

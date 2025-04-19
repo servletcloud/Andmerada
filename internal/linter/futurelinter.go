@@ -1,17 +1,21 @@
 package linter
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/servletcloud/Andmerada/internal/source"
+)
 
 type FutureLinter struct {
-	Threshold       uint64
+	Threshold       source.ID
 	sourcesInFuture []string
 }
 
-func (linter *linter) newFutureLinter(threshold uint64) *FutureLinter {
+func (linter *linter) newFutureLinter(threshold source.ID) *FutureLinter {
 	return &FutureLinter{Threshold: threshold, sourcesInFuture: nil}
 }
 
-func (linter *FutureLinter) LintSource(id uint64, name string) {
+func (linter *FutureLinter) LintSource(id source.ID, name string) {
 	if id <= linter.Threshold {
 		return
 	}

@@ -5,12 +5,12 @@ import (
 	"os"
 )
 
-func ScanAll(projectDir string) (map[uint64]string, error) {
-	idToName := make(map[uint64]string)
+func ScanAll(projectDir string) (map[ID]string, error) {
+	idToName := make(map[ID]string)
 
 	var duplicates []string
 
-	err := Traverse(projectDir, func(id uint64, name string) bool {
+	err := Traverse(projectDir, func(id ID, name string) bool {
 		if _, found := idToName[id]; found {
 			duplicates = []string{idToName[id], name}
 
@@ -29,15 +29,15 @@ func ScanAll(projectDir string) (map[uint64]string, error) {
 	return idToName, err
 }
 
-func TraverseAll(projectDir string, callback func(id uint64, name string)) error {
-	return Traverse(projectDir, func(id uint64, name string) bool {
+func TraverseAll(projectDir string, callback func(id ID, name string)) error {
+	return Traverse(projectDir, func(id ID, name string) bool {
 		callback(id, name)
 
 		return true
 	})
 }
 
-func Traverse(projectDir string, callback func(id uint64, name string) bool) error {
+func Traverse(projectDir string, callback func(id ID, name string) bool) error {
 	entries, err := os.ReadDir(projectDir)
 	if err != nil {
 		return fmt.Errorf("cannot read directory %v because: %w", projectDir, err)

@@ -5,13 +5,13 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/dustin/go-humanize/english"
 	"github.com/servletcloud/Andmerada/internal/cmd/descriptions"
 	"github.com/servletcloud/Andmerada/internal/linter"
 	"github.com/servletcloud/Andmerada/internal/osutil"
 	"github.com/servletcloud/Andmerada/internal/resources"
+	"github.com/servletcloud/Andmerada/internal/source"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +37,7 @@ func lintCommand() *cobra.Command {
 			config := linter.Configuration{
 				ProjectDir:      currentDir,
 				MaxSQLFileSize:  MaxSQLFileSizeBytes,
-				NowUTC:          time.Now().UTC(),
+				NowID:           source.NewIDFromNow(),
 				UpSQLTemplate:   resources.TemplateUpSQL(),
 				DownSQLTemplate: resources.TemplateDownSQL(),
 			}
