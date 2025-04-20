@@ -31,8 +31,6 @@ func initProjectCommand() *cobra.Command {
 			if err := project.Initialize(projectDir); err != nil {
 				if errors.Is(err, project.ErrConfigFileAlreadyExists) {
 					log.Fatalln(resources.MsgErrProjectExists())
-				} else if errors.Is(err, project.ErrNameExceeds255) {
-					log.Fatalln("Error: Project name cannot exceed 255 characters in length")
 				}
 				log.Panic(err)
 			}
